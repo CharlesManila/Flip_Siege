@@ -1,8 +1,9 @@
 /**
- * Competitive AI — context-aware trick play, calamity defense, and armory.
- * Uses real assault/block/stash values (matches simulate_stash_2v2 heuristics).
+ * Competitive AI — EV-based trick play, calamity defense, and armory.
+ * Uses one-ply trick simulation (perfect info) + reserve/calamity math.
  */
 import { COLORS } from "./data/cards.js";
+import { calamityReservePrep } from "./calamity.js";
 import {
   BUYS_PER_ARMORY,
   CALAMITY_PREP_MIN_RESERVE,
@@ -15,12 +16,22 @@ import {
   blockValue,
   canAfford,
   canFollow,
+  FINISHER_BASE,
+  isCalamityRound,
+  isSigilElite,
   payStash,
   recyclePaid,
+  ROUND_BUFF_BASE,
   scaleCombat,
+  scaledBuff,
   stashTotals,
   stashValue,
 } from "./rules.js";
+
+const JITTER = 0.08;
+const HP_VALUE = 1.15;
+const LETHAL_BONUS = 800;
+const CALAMITY_LETHAL_BONUS = 1200;
 
 function rand(rng) {
   return rng();
@@ -40,12 +51,11 @@ function combatContrib(card, led, team, round, siege) {
   return scaleCombat(raw, round);
 }
 
-/** Assault/block already on the table this trick. */
-function trickTotals(game, led) {
+function trickTotalsFrom(plays, game, led) {
   const rn = game.round;
   let assault = 0;
   let block = 0;
-  for (const { player, card, siege } of game.trickPlays || []) {
+  for (const { player, card, siege } of plays) {
     const team = game.teams[player.teamId];
     if (siege) assault += combatContrib(card, led, team, rn, true);
     else block += combatContrib(card, led, team, rn, false);
@@ -53,59 +63,14 @@ function trickTotals(game, led) {
   return { assault, block };
 }
 
-function styleBias(style, siege) {
-  if (style === "combat" || style === "aggressive") return siege ? 1.15 : 1.1;
-  if (style === "defensive") return siege ? 0.88 : 1.12;
-  if (style === "economist") return siege ? 1.05 : 0.95;
-  return 1;
+/** Damage to the defending team's castle from a resolved trick line. */
+function trickDamageToDefender(game, led, plays) {
+  const { assault, block } = trickTotalsFrom(plays, game, led);
+  return Math.max(0, assault - block);
 }
 
-function scoreCardPlay(game, player, card, led, siege, isLead) {
-  const team = game.teams[player.teamId];
-  const rn = game.round;
-  const style = player.aiStyle || "balanced";
-  const bias = styleBias(style, siege);
-  const off = card.color !== led;
-  const { assault, block } = trickTotals(game, led);
-
-  if (off) {
-    let stash = stashValue(card, siege);
-    if (team.marchTax) stash += 1;
-    let score = stash * 11;
-    if (siege) {
-      if (assault >= 6) score += 4;
-      if (style === "defensive") score += card.mr * 0.5;
-    } else {
-      const gap = assault - block;
-      if (gap > 0) score += Math.min(gap, 8) * 1.5;
-      if (style === "defensive" && card.tr >= 5) score += 3;
-    }
-    if (isLead) score -= 6;
-    return score * bias;
-  }
-
-  const contrib = combatContrib(card, led, team, rn, siege);
-  let score = contrib * 12;
-
-  if (siege) {
-    if (isLead) score += contrib * 3 + card.mr;
-    else if (assault + contrib >= block + 2) score += 5;
-    if (style === "defensive" && !isLead && card.mr >= 7) score -= contrib * 4;
-    if (style === "combat" || style === "aggressive") score += card.mr * 0.4;
-  } else {
-    const gap = assault - block;
-    if (gap > 0) {
-      score += Math.min(contrib, gap) * 18;
-      if (contrib >= gap) score += 8;
-    } else {
-      score += contrib * 4;
-      if (style === "defensive") score += contrib * 2;
-      else if (style === "economist" && contrib <= 2) score -= contrib * 3;
-    }
-    if (style === "defensive" && card.tr >= 6) score += 2;
-  }
-
-  return score * bias + rand(game.rng) * 0.35;
+function defenderTeamId(game) {
+  return 1 - game.siegerTeam;
 }
 
 function pickBest(hand, scoreFn) {
@@ -121,49 +86,189 @@ function pickBest(hand, scoreFn) {
   return best;
 }
 
+/** Fast opponent model for trick simulation (no nested lookahead). */
+function pickSimulationCard(game, player, led, siege, plays) {
+  const team = game.teams[player.teamId];
+  const rn = game.round;
+  const hand = player.hand;
+  const opts = canFollow(hand, led);
+  const off = hand.filter((c) => c.color !== led);
+  const { assault, block } = trickTotalsFrom(plays, game, led);
+  const gap = assault - block;
+
+  if (siege) {
+    const pool = opts.length ? opts : hand;
+    return pickBest(pool, (c) => combatContrib(c, led, team, rn, true));
+  }
+
+  if (gap > 0 && opts.length) {
+    return pickBest(opts, (c) => {
+      const b = combatContrib(c, led, team, rn, false);
+      const cover = Math.min(b, gap);
+      return cover * 50 + b;
+    });
+  }
+
+  if (gap <= 0 && off.length && opts.length) {
+    const follow = pickBest(opts, (c) => combatContrib(c, led, team, rn, false));
+    const dump = pickBest(off, (c) => {
+      let v = stashValue(c, false);
+      if (team.marchTax) v += 1;
+      return v * 12;
+    });
+    const fB = combatContrib(follow, led, team, rn, false);
+    const dV =
+      (team.marchTax ? stashValue(dump, false) + 1 : stashValue(dump, false)) * 11 -
+      fB * 4;
+    if (dV > 2 || gap <= -3) return dump;
+    return follow;
+  }
+
+  const pool = opts.length ? opts : hand;
+  return pickBest(pool, (c) => {
+    if (c.color !== led) {
+      let v = stashValue(c, false);
+      if (team.marchTax) v += 1;
+      return v * 10;
+    }
+    return combatContrib(c, led, team, rn, false) * (gap > 0 ? 14 : 3);
+  });
+}
+
+function simulateTrickToEnd(game, led, plays, fromStep) {
+  const order = game.trickOrder;
+  const sim = [...plays];
+  for (let i = fromStep; i < order.length; i++) {
+    const p = game.players[order[i]];
+    if (!p.hand.length) continue;
+    const siege = p.teamId === game.siegerTeam;
+    const card = pickSimulationCard(game, p, led, siege, sim);
+    sim.push({ player: p, card, siege });
+  }
+  return trickDamageToDefender(game, led, sim);
+}
+
+function castleFinishWeight(game, damage, playerTeam) {
+  const defId = defenderTeamId(game);
+  const defHp = game.teams[defId].castleHp;
+  if (playerTeam === game.siegerTeam && damage >= defHp) return 1.8;
+  if (playerTeam === defId && defHp <= 12) return 1.5;
+  return 1;
+}
+
+/**
+ * Expected value of playing `card` for this player (higher = better).
+ * Negative EV = damage to our castle when we defend.
+ */
+function evaluateCardEV(game, player, card, led, siege, isLead) {
+  const team = game.teams[player.teamId];
+  const rn = game.round;
+  const defId = defenderTeamId(game);
+  const myTeam = player.teamId;
+  const off = card.color !== led;
+
+  const plays = [
+    ...game.trickPlays,
+    { player, card, siege: off ? false : siege },
+  ];
+  if (off) {
+    plays[plays.length - 1].siege = false;
+  }
+
+  const ledFinal = led || card.color;
+  const damage = simulateTrickToEnd(game, ledFinal, plays, game.trickStep + 1);
+  const finW = castleFinishWeight(game, damage, myTeam);
+
+  if (off) {
+    let stash = stashValue(card, siege);
+    if (team.marchTax) stash += 1;
+    let ev = stash * 9;
+    const { assault, block } = trickTotalsFrom(plays, game, ledFinal);
+    const gap = assault - block;
+    if (!siege && gap > 0) ev += Math.min(gap, 10) * 1.2;
+    if (siege && assault >= 5) ev += 3;
+    if (myTeam === defId && gap > 0) ev -= gap * HP_VALUE * 0.35;
+    if (isLead) ev -= 5;
+    return ev + rand(game.rng) * JITTER;
+  }
+
+  const contrib = combatContrib(card, ledFinal, team, rn, siege);
+  const { assault, block } = trickTotalsFrom(
+    game.trickPlays,
+    game,
+    ledFinal,
+  );
+  const gap = assault - block;
+
+  if (myTeam === defId) {
+    const hp = game.teams[defId].castleHp;
+    let ev = -damage * HP_VALUE * finW;
+    if (gap > 0) {
+      const cover = Math.min(contrib, gap);
+      ev += cover * HP_VALUE * 2.2;
+      if (contrib >= gap) ev += LETHAL_BONUS * 0.15;
+      if (damage === 0 && contrib >= gap) ev += 12;
+    }
+    if (damage > 0 && contrib > 0) ev += Math.min(contrib, damage) * HP_VALUE;
+    return ev + rand(game.rng) * JITTER;
+  }
+
+  let ev = damage * HP_VALUE * finW;
+  if (siege) {
+    ev += contrib * 1.4;
+    if (isLead) ev += contrib * 0.5;
+    if (gap + contrib >= block + 3) ev += 6;
+    if (game.teams[defId].castleHp <= damage + 4) ev += 25;
+  }
+  return ev + rand(game.rng) * JITTER;
+}
+
+function legalCards(game, player, led, siege, isLead) {
+  if (isLead) return player.hand;
+  if (game.followMode === "must") {
+    const opts = canFollow(player.hand, led);
+    return opts.length ? opts : player.hand;
+  }
+  return player.hand;
+}
+
+function pickByEV(game, player, led, siege, isLead) {
+  const pool = legalCards(game, player, led, siege, isLead);
+  return pickBest(pool, (c) =>
+    evaluateCardEV(game, player, c, led, siege, isLead),
+  );
+}
+
 function pickFollowMaySmart(game, player, led, siege) {
   const hand = player.hand;
   const opts = canFollow(hand, led);
   const off = hand.filter((c) => c.color !== led);
-  const style = player.aiStyle || "balanced";
 
   if (opts.length && off.length) {
-    const follow = pickBest(opts, (c) =>
-      scoreCardPlay(game, player, c, led, siege, false),
+    const followOnly = pickBest(opts, (c) =>
+      evaluateCardEV(
+        game,
+        player,
+        c,
+        led,
+        siege,
+        false,
+      ),
     );
     const dump = pickBest(off, (c) =>
-      scoreCardPlay(game, player, c, led, siege, false),
+      evaluateCardEV(game, player, c, led, siege, false),
     );
-    const fScore = scoreCardPlay(game, player, follow, led, siege, false);
-    const dScore = scoreCardPlay(game, player, dump, led, siege, false);
-    const { assault, block } = trickTotals(game, led);
-
-    let dumpChance = 0.38;
-    if (style === "economist") dumpChance = 0.55;
-    if (style === "defensive" && !siege) dumpChance = 0.48;
-
-    const siegePiling = siege && assault >= 5;
-    const defenseHopeless = !siege && assault - block >= 6;
-    if (dScore > fScore * 1.08 || siegePiling || defenseHopeless) {
-      if (rand(game.rng) < dumpChance + (dScore > fScore * 1.25 ? 0.25 : 0)) {
-        return dump;
-      }
-    }
-    return follow;
+    const fEv = evaluateCardEV(game, player, followOnly, led, siege, false);
+    const dEv = evaluateCardEV(game, player, dump, led, siege, false);
+    if (dEv > fEv + 1.5) return dump;
+    return followOnly;
   }
 
-  if (opts.length) {
-    return pickBest(opts, (c) => scoreCardPlay(game, player, c, led, siege, false));
-  }
-  if (off.length) {
-    return pickBest(off, (c) => scoreCardPlay(game, player, c, led, siege, false));
-  }
-  return hand[Math.floor(rand(game.rng) * hand.length)];
+  return pickByEV(game, player, led, siege, false);
 }
 
 function pickLeadSmart(game, player) {
   const hand = player.hand;
-  const style = player.aiStyle || "balanced";
   const team = game.teams[player.teamId];
   const siege = player.teamId === game.siegerTeam;
 
@@ -171,35 +276,87 @@ function pickLeadSmart(game, player) {
     game.sallyUsed = true;
     const colors = [...new Set(hand.map((c) => c.color))];
     const best = colors.reduce((bestC, col) => {
-      const sum = hand.filter((c) => c.color === col).reduce((s, c) => s + c.mr, 0);
+      const sum = hand
+        .filter((c) => c.color === col)
+        .reduce((s, c) => s + c.mr, 0);
       const bestSum = hand
         .filter((c) => c.color === bestC)
         .reduce((s, c) => s + c.mr, 0);
       return sum > bestSum ? col : bestC;
     }, colors[0]);
     const cards = hand.filter((c) => c.color === best);
-    return pickBest(cards, (c) => scoreCardPlay(game, player, c, c.color, true, true));
+    return pickByEV(game, player, best, true, true);
   }
 
-  if (style === "economist") {
-    const counts = {};
-    for (const c of hand) counts[c.color] = (counts[c.color] || 0) + 1;
-    const bestColor = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
-    const pool = hand.filter((c) => c.color === bestColor);
-    return pickBest(pool.length ? pool : hand, (c) =>
-      scoreCardPlay(game, player, c, c.color, siege, true),
+  return pickByEV(game, player, null, siege, true);
+}
+
+function calamityBlockWithCard(game, teamId, led, trickPlays, card, player) {
+  const team = game.teams[teamId];
+  const rn = game.round;
+  const firstDef = !team.boilingOilUsed;
+  const { blockBonus, extra: prepExtra } = calamityReservePrep(team, rn);
+  let block = blockBonus;
+  let sigilElite = false;
+
+  const allPlays = [...(trickPlays || [])];
+  if (card && player) allPlays.push({ player, card, siege: false });
+
+  for (const { card: c } of allPlays.filter((t) => t.player.teamId === teamId)) {
+    const contrib = scaleCombat(
+      blockValue(c, led, team, rn, { isFirstDefenseTrick: firstDef }),
+      rn,
     );
+    block += contrib;
+    if (contrib > 0 && isSigilElite(c, team)) sigilElite = true;
   }
 
-  if (style === "defensive" && !siege) {
-    const mid = [...hand].sort((a, b) => a.mr - b.mr);
-    const c = mid[Math.floor(mid.length / 2)];
-    return scoreCardPlay(game, player, c, c.color, false, true) >= 0 ? c : hand[0];
+  if (!sigilElite) {
+    if (!team.boilingOilUsed && team.activeBuffs?.has("boiling_oil")) {
+      block += scaledBuff(ROUND_BUFF_BASE, rn);
+    }
+    if (!team.ironCurtainUsed && team.activeBuffs?.has("iron_curtain")) {
+      block += scaledBuff(FINISHER_BASE, rn);
+    }
   }
 
-  return pickBest(hand, (c) =>
-    scoreCardPlay(game, player, c, c.color, siege, true),
-  );
+  const assault = game.calamityReveal?.assault ?? 10;
+  const damage = Math.max(0, assault + prepExtra - block);
+  return { block, damage, prepExtra };
+}
+
+/** Calamity tower-up: minimize expected calamity damage (reserve prep + walls). */
+export function pickCalamityCard(game, player, led) {
+  const team = game.teams[player.teamId];
+  const rn = game.round;
+  const assault = game.calamityReveal?.assault ?? 10;
+  const { extra: prepExtra } = calamityReservePrep(team, rn);
+  const hp = team.castleHp;
+
+  const ledCards = canFollow(player.hand, led);
+  const candidates = ledCards.length ? ledCards : player.hand;
+
+  return pickBest(candidates, (c) => {
+    const { damage, block } = calamityBlockWithCard(
+      game,
+      player.teamId,
+      led,
+      game.trickPlays || [],
+      c,
+      player,
+    );
+    let ev = -damage * HP_VALUE * 3;
+    if (damage === 0) ev += 40;
+    if (hp <= assault + prepExtra && damage < hp) ev += CALAMITY_LETHAL_BONUS * 0.2;
+    if (damage >= hp) ev -= CALAMITY_LETHAL_BONUS;
+    if (c.color === led) ev += block * 0.5;
+    else {
+      let v = stashValue(c, false);
+      if (team.marchTax) v += 1;
+      ev += v * 4;
+    }
+    return ev;
+  });
 }
 
 /** Defending team trophy: best tower, prefer led-color siege monsters within block. */
@@ -219,24 +376,7 @@ export function pickCard(game, player, led, siege, isLead) {
   if (game.followMode === "may") {
     return pickFollowMaySmart(game, player, led, siege);
   }
-  const opts = canFollow(player.hand, led);
-  const pool = opts.length ? opts : player.hand;
-  return pickBest(pool, (c) => scoreCardPlay(game, player, c, led, siege, false));
-}
-
-/** Calamity tower-up: maximize block on led color, else stash dump. */
-export function pickCalamityCard(game, player, led) {
-  const team = game.teams[player.teamId];
-  const rn = game.round;
-  const ledCards = canFollow(player.hand, led);
-  if (ledCards.length) {
-    return pickBest(ledCards, (c) => blockValue(c, led, team, rn, { isFirstDefenseTrick: false }));
-  }
-  return pickBest(player.hand, (c) => {
-    let v = stashValue(c, false);
-    if (team.marchTax) v += 1;
-    return v * 10 + c.tr;
-  });
+  return pickByEV(game, player, led, siege, false);
 }
 
 function dominantDeckColor(team) {
@@ -250,59 +390,110 @@ function dominantDeckColor(team) {
 }
 
 function pickPermanentChoice(team, options, rng) {
-  const dom = dominantDeckColor(team);
-  const order = ["sigil", "creed", "crest", "mastery", "purge"];
-  for (const key of order) {
+  for (const key of ["sigil", "creed", "crest", "mastery", "purge"]) {
     if (!options.includes(key)) continue;
-    if (key === "purge" && rand(rng) < 0.15) return key;
-    if (key === "sigil" || key === "creed" || key === "crest" || key === "mastery") {
-      return key;
-    }
+    if (key === "purge" && rand(rng) < 0.12) return key;
+    if (key !== "purge") return key;
   }
   return options[Math.floor(rand(rng) * options.length)];
 }
 
-function needsReservePrep(team, round) {
-  return team.reserve.length < CALAMITY_PREP_MIN_RESERVE && (round === 1 || round === 3);
+function nextRoundIsCalamity(round) {
+  return isCalamityRound(round + 1);
 }
 
-function armoryPriority(style, team, round, rng) {
-  const low = team.castleHp < team.castleMax * 0.45;
-  const critical = team.castleHp < team.castleMax * 0.3;
-  const thin = team.reserve.length < CALAMITY_PREP_MIN_RESERVE;
-  const deep = team.reserve.length > 8;
-  const finishers = round >= 5 ? ["siege_breaker", "iron_curtain"] : [];
-  const actions = [];
-
-  if (critical) actions.push("repair", "repair");
-  else if (low) actions.push("repair");
-
-  if (needsReservePrep(team, round) && team.reserve.length >= 1) {
-    actions.push("scrap_1", "scrap_1");
-  } else if (style === "thinner" && team.reserve.length >= 1) {
-    actions.push("scrap_1");
-  } else if (deep && style !== "combat" && rand(rng) < 0.35) {
-    actions.push("scrap_1");
-  }
-
-  if (style === "combat") {
-    actions.push("war_drums", "boiling_oil", "march_tax", ...finishers);
-  } else if (style === "thinner") {
-    actions.push("march_tax", "war_drums", "boiling_oil", ...finishers);
-  } else {
-    actions.push("war_drums", "boiling_oil", "march_tax", ...finishers);
-  }
-
-  return shuffle([...new Set(actions)], rng);
+function greenAfterPay(team, cost) {
+  const t = stashTotals(team);
+  return (t.green || 0) - (cost.green || 0);
 }
 
-function shuffle(arr, rng) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rand(rng) * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+function armoryActionScore(game, team, teamId, key) {
+  const hp = team.castleHp;
+  const max = team.castleMax;
+  const round = game.round;
+  const t = stashTotals(team);
+  const nextCal = nextRoundIsCalamity(round);
+
+  if (key === "repair") {
+    if (hp >= max - 1) return -5;
+    const missing = max - hp;
+    if (hp < max * 0.25) return 90 + missing;
+    if (hp < max * 0.45) return 55 + missing * 0.5;
+    if (nextCal && hp < max * 0.7) return 35;
+    return 12;
   }
-  return a;
+
+  if (key === "scrap_1" || key === "scrap_2") {
+    const n = key === "scrap_2" ? 2 : 1;
+    if (team.reserve.length < n) return -20;
+    if (team.reserve.length < CALAMITY_PREP_MIN_RESERVE && nextCal) {
+      return 70 - team.reserve.length * 6;
+    }
+    if (team.reserve.length > 11) return 25;
+    return 8;
+  }
+
+  if (key === "boiling_oil") {
+    let s = 42;
+    if (hp < max * 0.5) s += 15;
+    if (nextCal) s += 20;
+    if ((t.blue || 0) < 8) s -= 25;
+    return s;
+  }
+
+  if (key === "war_drums") {
+    let s = 38;
+    if ((t.green || 0) < 4 && hp < max * 0.55) s -= 30;
+    return s;
+  }
+
+  if (key === "march_tax") return 32;
+
+  if (key === "siege_breaker" || key === "iron_curtain") {
+    return round >= 5 && hp > max * 0.2 ? 48 : -10;
+  }
+
+  return 10;
+}
+
+function armoryCandidates(game, team, style) {
+  const round = game.round;
+  const nextCal = nextRoundIsCalamity(round);
+  const hp = team.castleHp;
+  const max = team.castleMax;
+  const t = stashTotals(team);
+  const list = [];
+
+  if (hp < max * 0.5 && (t.green || 0) >= 3) list.push("repair");
+  if (hp < max * 0.3 && (t.green || 0) >= 3) list.push("repair");
+  if (nextCal && team.reserve.length < CALAMITY_PREP_MIN_RESERVE && team.reserve.length >= 1) {
+    list.push("scrap_1");
+  }
+  if (team.reserve.length > 10 && (t.green || 0) >= 5) list.push("scrap_1");
+
+  if (canAfford(team, ROUND_COSTS.boiling_oil) && (ROUND_MIN.boiling_oil || 1) <= round) {
+    list.push("boiling_oil");
+  }
+  if (canAfford(team, ROUND_COSTS.war_drums) && (ROUND_MIN.war_drums || 1) <= round) {
+    list.push("war_drums");
+  }
+  if (canAfford(team, ROUND_COSTS.march_tax) && (ROUND_MIN.march_tax || 1) <= round) {
+    list.push("march_tax");
+  }
+  if (round >= 5) {
+    if (canAfford(team, ROUND_COSTS.siege_breaker)) list.push("siege_breaker");
+    if (canAfford(team, ROUND_COSTS.iron_curtain)) list.push("iron_curtain");
+  }
+
+  if (style === "economist") {
+    const i = list.indexOf("march_tax");
+    if (i >= 0) {
+      list.splice(i, 1);
+      list.unshift("march_tax");
+    }
+  }
+
+  return [...new Set(list)];
 }
 
 function pickPermanentColor(team) {
@@ -335,9 +526,9 @@ export function runArmoryAI(game, teamId) {
       return false;
     }
     const opts = Object.keys(PERMANENT_COSTS).filter((k) => canAfford(team, PERMANENT_COSTS[k]));
-    if (!opts.length || totalStash < 16) return false;
-    if (game.round === 4 && totalStash < 20 && rand(rng) > 0.55) return false;
-    if (rand(rng) > 0.52) return false;
+    if (!opts.length || totalStash < 18) return false;
+    if (game.round === 4 && totalStash < 22 && rand(rng) > 0.45) return false;
+    if (team.castleHp < team.castleMax * 0.4 && rand(rng) > 0.35) return false;
     const choice = pickPermanentChoice(team, opts, rng);
     const paid = payStash(team, PERMANENT_COSTS[choice], game, teamId);
     if (!paid) return false;
@@ -360,6 +551,9 @@ export function runArmoryAI(game, teamId) {
     if (!cost || buys >= BUYS_PER_ARMORY) return false;
     if (key.startsWith("scrap") && scrapBuys >= 1) return false;
     if (!canAfford(team, cost)) return false;
+    if (key === "repair" && greenAfterPay(team, cost) < 0 && team.castleHp > team.castleMax * 0.6) {
+      return false;
+    }
     if (key === "scrap_1" && team.reserve.length < 1) return false;
     if (key === "scrap_2" && team.reserve.length < 2) return false;
     const paid = payStash(team, cost, game, teamId);
@@ -377,6 +571,11 @@ export function runArmoryAI(game, teamId) {
   const tryRound = (key) => {
     if ((ROUND_MIN[key] || 1) > game.round) return false;
     if (buys >= BUYS_PER_ARMORY || !canAfford(team, ROUND_COSTS[key])) return false;
+    const cost = ROUND_COSTS[key];
+    if ((cost.blue || 0) >= 10 && (cost.green || 0) === 0) {
+      const g = stashTotals(team).green || 0;
+      if (g < 4 && team.castleHp < team.castleMax * 0.55) return false;
+    }
     const paid = payStash(team, ROUND_COSTS[key], game, teamId);
     if (!paid) return false;
     game.recycle.push(...recyclePaid(paid));
@@ -387,47 +586,31 @@ export function runArmoryAI(game, teamId) {
     return true;
   };
 
-  const canBuyFinisher = (key) => {
-    if (game.round < 5) return false;
-    const cost = ROUND_COSTS[key];
-    if (!canAfford(team, cost)) return false;
-    const t = stashTotals(team);
-    const need = Object.values(cost).reduce((a, b) => a + b, 0);
-    const have = Object.values(t).reduce((a, b) => a + b, 0);
-    return have >= need + 4;
-  };
-
   tryPerm();
+  const excluded = new Set();
   while (buys < BUYS_PER_ARMORY) {
+    const candidates = armoryCandidates(game, team, style).filter((k) => !excluded.has(k));
+    let bestKey = null;
+    let bestScore = -Infinity;
+    for (const key of candidates) {
+      const sc = armoryActionScore(game, team, teamId, key);
+      if (sc > bestScore) {
+        bestScore = sc;
+        bestKey = key;
+      }
+    }
+    if (!bestKey || bestScore < 5) break;
+
     let done = false;
-    const order = armoryPriority(style, team, game.round, rng);
-
-    if (game.round >= 5) {
-      for (const k of ["siege_breaker", "iron_curtain"]) {
-        if (canBuyFinisher(k) && tryRound(k)) {
-          done = true;
-          break;
-        }
-      }
+    if (bestKey === "repair" || bestKey.startsWith("scrap")) {
+      done = tryVisit(bestKey);
+    } else if (ROUND_COSTS[bestKey]) {
+      done = tryRound(bestKey);
     }
-
     if (!done) {
-      for (const act of order) {
-        if (act === "repair" && tryVisit("repair")) {
-          done = true;
-          break;
-        }
-        if (act === "scrap_1" && tryVisit("scrap_1")) {
-          done = true;
-          break;
-        }
-        if (ROUND_COSTS[act] && tryRound(act)) {
-          done = true;
-          break;
-        }
-      }
+      excluded.add(bestKey);
+      continue;
     }
-    if (!done) break;
   }
   return log;
 }

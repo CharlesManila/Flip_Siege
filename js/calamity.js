@@ -21,7 +21,7 @@ export function calamityAssaultFromRanks(rank1, rank2) {
   return Math.floor((rank1 + rank2) * CALAMITY_ASSAULT_MULT);
 }
 
-function calamityReservePrep(team, round) {
+export function calamityReservePrep(team, round) {
   const depth = team.reserve.length;
   let blockBonus = 0;
   let extra = 0;
