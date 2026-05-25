@@ -31,6 +31,7 @@ function startGame() {
     game = newGame({ followMode: follow, seed: Date.now(), cooldownMechanic: true });
     document.getElementById("screen-setup")?.classList.add("hidden");
     document.getElementById("screen-game")?.classList.remove("hidden");
+    document.body.classList.remove("in-match", "your-turn");
     render();
     scheduleAI();
   } catch (err) {
@@ -161,6 +162,7 @@ document.getElementById("btn-new")?.addEventListener("click", () => {
   game = null;
   document.getElementById("screen-setup")?.classList.remove("hidden");
   document.getElementById("screen-game")?.classList.add("hidden");
+  document.body.classList.remove("in-match", "your-turn");
 });
 
 bindHandClicks(onPlayCard);

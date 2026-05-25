@@ -61,10 +61,11 @@ function renderPlayerSlot(p, game) {
   const isTurn =
     (game.phase === "playing" || calamityDefend) && humanMustPlay(game) && p.human;
   const div = document.createElement("div");
-  div.className = `player-slot team-${p.teamId} ${p.human ? "human" : "ai"} ${isTurn ? "active" : ""}`;
+  div.className = `player-slot team-${p.teamId} ${p.human ? "human player-you" : "ai"} ${isTurn ? "active" : ""}`;
+  if (p.human && isTurn) div.setAttribute("aria-label", "Your hand — tap a highlighted card to play");
   div.innerHTML = `
     <div class="player-name">${p.name}${p.human ? " ★" : ""}</div>
-    <div class="hand-count">${p.hand.length} cards</div>`;
+    <div class="hand-count">${p.hand.length} card${p.hand.length === 1 ? "" : "s"}</div>`;
   const handEl = document.createElement("div");
   handEl.className = "hand";
   if (p.human) {
@@ -471,7 +472,11 @@ function renderScrapPicker(game, hooks) {
 export function renderBoard(game, hooks) {
   const board = $("#board");
   if (!board || !game) return;
-  board.className = `board phase-${game.phase}`;
+  board.className = `game-board board phase-${game.phase}`;
+
+  const inMatch = !document.getElementById("screen-game")?.classList.contains("hidden");
+  document.body.classList.toggle("in-match", inMatch);
+  document.body.classList.toggle("your-turn", inMatch && humanMustPlay(game));
 
   const trophyDlg = document.getElementById("trophy-dialog");
   if (game.phase !== "trophy_pick" && trophyDlg?.open) trophyDlg.close();
@@ -542,6 +547,10 @@ export function renderBoard(game, hooks) {
   }
 
   const prompt = $("#prompt");
+  prompt?.classList.toggle(
+    "prompt-your-turn",
+    humanMustPlay(game) && game.phase !== "armory" && game.phase !== "gameover",
+  );
   if (game.phase === "calamity_reveal") {
     const step = game.calamityReveal?.step;
     if (step === "deck") {

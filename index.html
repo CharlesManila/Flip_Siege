@@ -2,7 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"
+    />
+    <meta name="theme-color" content="#1a1428" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <title>Flip-Siege — Play vs AI</title>
     <link rel="stylesheet" href="css/game.css" />
   </head>
@@ -27,25 +34,35 @@
       <p class="small-note">
         <a href="rules/rulebook.html" target="_blank" rel="noopener">Full rulebook (print-friendly)</a>
       </p>
-      <button type="button" id="btn-start">Start battle</button>
-      <button type="button" id="btn-rules" class="btn-secondary">Quick rules</button>
+      <div class="setup-actions">
+        <button type="button" id="btn-start">Start battle</button>
+        <button type="button" id="btn-rules" class="btn-secondary">Quick rules</button>
+      </div>
     </section>
 
     <section id="screen-game" class="hidden">
-      <div class="top-bar">
-        <div>
-          <span id="round-label">Round 1</span> · <span id="siege-label">—</span>
+      <header class="top-bar">
+        <div class="top-bar-meta">
+          <span id="round-label">Round 1</span>
+          <span class="top-bar-dot" aria-hidden="true">·</span>
+          <span id="siege-label">—</span>
         </div>
-        <div id="prompt">—</div>
-        <button type="button" id="btn-play-again" class="hidden">Play again</button>
-        <button type="button" id="btn-new">Menu</button>
-      </div>
+        <p id="prompt" class="game-prompt" role="status">—</p>
+        <div class="top-bar-actions">
+          <button type="button" id="btn-play-again" class="hidden">Play again</button>
+          <button type="button" id="btn-new" class="btn-menu">Menu</button>
+        </div>
+      </header>
 
-      <div id="board">
-        <div id="castles"></div>
-        <div id="trick-center" class="trick-center" aria-live="polite"></div>
-        <div id="players"></div>
-        <div id="armory-panel" class="hidden">
+      <div id="board" class="game-board">
+        <div id="castles" class="board-castles"></div>
+        <div id="trick-center" class="trick-center board-trick" aria-live="polite"></div>
+        <div id="players" class="board-players"></div>
+        <details id="log-panel" class="log-panel">
+          <summary>Battle log</summary>
+          <div id="log"></div>
+        </details>
+        <div id="armory-panel" class="hidden board-armory">
           <h3>Armory</h3>
           <p id="armory-summary" class="armory-summary"></p>
           <div id="perm-color-section" class="armory-section perm-color-section hidden">
@@ -67,7 +84,6 @@
           <div id="armory-shop"></div>
           <button type="button" id="btn-end-armory" class="hidden">Done shopping → next round</button>
         </div>
-        <div id="log"></div>
       </div>
     </section>
 
