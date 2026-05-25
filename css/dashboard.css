@@ -1,0 +1,198 @@
+@import url("https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap");
+
+:root {
+  --bg: #1a1428;
+  --panel: #2d2440;
+  --ink: #fff8e7;
+  --accent: #ff6b4a;
+  --muted: #b8a8d0;
+  --win: #5ec269;
+  --loss: #e85d5d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Fredoka", system-ui, sans-serif;
+  background: radial-gradient(ellipse at top, #3d2f5c 0%, var(--bg) 55%);
+  color: var(--ink);
+  min-height: 100vh;
+  padding: 1rem 1rem 2rem;
+}
+
+.dashboard {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.dashboard h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.75rem;
+}
+
+.dashboard .sub {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0 0 1.25rem;
+}
+
+.dashboard-nav {
+  margin-bottom: 1.25rem;
+}
+
+.dashboard-nav a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.dashboard-nav a:hover {
+  text-decoration: underline;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card {
+  background: var(--panel);
+  border: 2px solid #000;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  box-shadow: 3px 3px 0 #000;
+}
+
+.stat-card .label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-card .value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 0.2rem;
+}
+
+.panel {
+  background: var(--panel);
+  border: 2px solid #000;
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1rem;
+  box-shadow: 3px 3px 0 #000;
+}
+
+.panel h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.histogram {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.hist-row {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr 2.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.hist-bar-wrap {
+  background: #1a1428;
+  border-radius: 6px;
+  height: 1.25rem;
+  overflow: hidden;
+  border: 1px solid #0004;
+}
+
+.hist-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #ff9a7a);
+  border-radius: 6px;
+  min-width: 2px;
+  transition: width 0.3s ease;
+}
+
+.games-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.games-table th,
+.games-table td {
+  text-align: left;
+  padding: 0.45rem 0.35rem;
+  border-bottom: 1px solid #ffffff18;
+}
+
+.games-table th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-win {
+  background: var(--win);
+  color: #0d1a10;
+}
+
+.badge-loss {
+  background: var(--loss);
+  color: #1a0808;
+}
+
+.status {
+  padding: 1rem;
+  border-radius: 10px;
+  background: #1a1428;
+  border: 1px dashed var(--muted);
+  color: var(--muted);
+}
+
+.status.error {
+  border-color: var(--loss);
+  color: #ffc8c8;
+}
+
+.btn-refresh {
+  font-family: inherit;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border: 2px solid #000;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #1a0808;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #000;
+  margin-bottom: 1rem;
+}
+
+.btn-refresh:hover {
+  filter: brightness(1.05);
+}
+
+.hidden {
+  display: none !important;
+}

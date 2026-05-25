@@ -85,6 +85,24 @@ You can use **both** Supabase and a webhook.
 
 ---
 
+## Play stats dashboard (live)
+
+After running `supabase/migrations/20260525120000_play_stats_dashboard.sql` in the SQL Editor:
+
+- **https://charlesmanila.github.io/Flip_Siege/dashboard.html**
+- Or locally: `dashboard.html` next to the game
+
+Shows win rate, average rounds/tricks, round histogram, and recent games (no full card-play dumps on the page).
+
+Apply migration from a machine with the DB password:
+
+```bash
+set SUPABASE_DB_PASSWORD=your_db_password
+python scripts/apply-migration.py 20260525120000_play_stats_dashboard.sql
+```
+
+---
+
 ## Export data for analysis
 
 Supabase → **Table Editor** → `finished_games` → Export CSV  
