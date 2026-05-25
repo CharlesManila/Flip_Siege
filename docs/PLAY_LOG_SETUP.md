@@ -48,24 +48,21 @@ create policy "anon_insert_finished_games"
 
 ---
 
-## 3. Copy API keys into the game
+## 3. API keys (GitHub secret — recommended)
+
+Project URL is already set: `https://wfjmrtogzfpkinivjipr.supabase.co`
 
 1. Supabase → **Project Settings** → **API**
-2. Copy **Project URL** and **anon public** key
-3. Edit `js/playLogConfig.js`:
+2. Copy the **anon public** key (`eyJ…`)
+3. Add it to GitHub (do **not** commit the service_role key):
 
-```javascript
-export const PLAY_LOG = {
-  enabled: true,
-  supabaseUrl: "https://YOUR_PROJECT.supabase.co",
-  supabaseAnonKey: "YOUR_ANON_KEY",
-  table: "finished_games",
-  webhookUrl: "",
-  logLocalhost: false,
-};
+```powershell
+gh secret set SUPABASE_ANON_KEY --repo CharlesManila/Flip_Siege
 ```
 
-4. Commit and push to GitHub (Pages redeploys)
+Paste the anon key when prompted, then push any commit or re-run the **Deploy Flip-Siege Play** workflow.
+
+**Or** paste the anon key into `js/playLogConfig.js` locally and push (safe with insert-only RLS).
 
 ---
 

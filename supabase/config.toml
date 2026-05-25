@@ -1,0 +1,5 @@
+# Flip_Siege — linked project (GitHub integration runs migrations from supabase/migrations/)
+project_id = "wfjmrtogzfpkinivjipr"
+
+[api]
+enabled = true

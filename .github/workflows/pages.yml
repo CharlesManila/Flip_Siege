@@ -37,6 +37,12 @@ jobs:
             echo "Using committed play/rules/rulebook.html"
           fi
 
+      - name: Configure Supabase play logging
+        env:
+          SUPABASE_URL: https://wfjmrtogzfpkinivjipr.supabase.co
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: bash scripts/write-play-log-config.sh
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
