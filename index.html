@@ -68,7 +68,6 @@
           <div id="log"></div>
         </details>
         <div id="armory-panel" class="hidden board-armory">
-          <h3>Armory</h3>
           <p id="armory-summary" class="armory-summary"></p>
           <div id="perm-color-section" class="armory-section perm-color-section hidden">
             <h4 class="armory-section-title">Permanent color</h4>
@@ -86,7 +85,25 @@
               </select>
             </label>
           </div>
-          <div id="armory-shop"></div>
+          <div id="armory-shop" class="armory-shop">
+            <div class="armory-board-wrap">
+              <img
+                src="assets/armory-board.png"
+                alt="Flip-Siege Armory — tap a stall or shrine to buy"
+                class="armory-board-img"
+                width="1536"
+                height="1024"
+                decoding="async"
+              />
+              <div
+                id="armory-hotspots"
+                class="armory-hotspots"
+                role="group"
+                aria-label="Armory purchases"
+              ></div>
+            </div>
+            <p id="armory-hint-line" class="armory-hint-line" aria-live="polite"></p>
+          </div>
           <button type="button" id="btn-end-armory" class="hidden">Done shopping → next round</button>
         </div>
       </div>
