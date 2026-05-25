@@ -17,7 +17,6 @@ import {
   canAfford,
   stashTotals,
 } from "./rules.js";
-import { ARMORY_HOTSPOT_ORDER, ARMORY_HOTSPOTS } from "./armoryLayout.js";
 import { humanMustPlay, isCalamityLead } from "./game.js";
 import { canFollow } from "./rules.js";
 
@@ -596,154 +595,126 @@ export function renderBoard(game, hooks) {
   $("#btn-play-again")?.classList.toggle("hidden", game.phase !== "gameover");
 }
 
-function armoryItemMeta(game, key) {
-  const team = game.teams[0];
-  const buysLeft = game.humanBuysLeft;
-
-  if (VISIT_COSTS[key]) {
-    const cost = VISIT_COSTS[key];
-    let enabled = canAfford(team, cost) && buysLeft > 0;
-    let lock = "";
-    if (key.startsWith("scrap") && game.humanScrapBuys >= 1) {
-      enabled = false;
-      lock = "Max one Scrap per visit.";
-    }
-    if (!canAfford(team, cost) && buysLeft > 0) lock = "Not enough green Stash.";
-    if (buysLeft <= 0) lock = "No purchases left.";
-    return {
-      title: VISIT_LABELS[key] || key,
-      cost,
-      desc: VISIT_DESCRIPTIONS[key],
-      enabled,
-      lock,
-      duration: SHOP_DURATION[key],
-    };
-  }
-
-  if (ROUND_COSTS[key]) {
-    const minR = ROUND_MIN[key] || 1;
-    const cost = ROUND_COSTS[key];
-    if (minR > game.round) {
-      return {
-        title: ROUND_LABELS[key] || key,
-        cost,
-        desc: ROUND_DESCRIPTIONS[key],
-        enabled: false,
-        lock: `Unlocks round ${minR}+.`,
-        duration: SHOP_DURATION[key],
-      };
-    }
-    let enabled = canAfford(team, cost) && buysLeft > 0;
-    let lock = "";
-    if (!canAfford(team, cost) && buysLeft > 0) lock = "Not enough blue Stash.";
-    if (buysLeft <= 0) lock = "No purchases left.";
-    return {
-      title: ROUND_LABELS[key] || key,
-      cost,
-      desc: ROUND_DESCRIPTIONS[key],
-      enabled,
-      lock,
-      duration: SHOP_DURATION[key],
-    };
-  }
-
-  if (key.startsWith("perm_")) {
-    const pk = key.replace(/^perm_/, "");
-    const cost = PERMANENT_COSTS[pk];
-    const title = PERMANENT_NAMES[pk];
-    const desc = PERMANENT_DESCRIPTIONS[pk];
-    if (team.permanent) {
-      return {
-        title,
-        cost,
-        desc,
-        enabled: false,
-        lock: `You own ${PERMANENT_NAMES[team.permanent]} (${team.permanentColor}).`,
-        duration: "permanent",
-      };
-    }
-    if (game.round < PERMANENT_UNLOCK_ROUND) {
-      return {
-        title,
-        cost,
-        desc,
-        enabled: false,
-        lock: `Permanents unlock round ${PERMANENT_UNLOCK_ROUND} Armory.`,
-        duration: "permanent",
-      };
-    }
-    let enabled = canAfford(team, cost) && buysLeft > 0;
-    let lock = "";
-    if (!canAfford(team, cost) && buysLeft > 0) lock = "Not enough Stash (all colors).";
-    if (buysLeft <= 0) lock = "No purchases left.";
-    return { title, cost, desc, enabled, lock, duration: "permanent" };
-  }
-
-  return null;
-}
-
 function renderArmory(game, hooks) {
   const panel = $("#armory-panel");
   panel.classList.remove("hidden");
+  const shop = $("#armory-shop");
+  shop.innerHTML = "";
   const team = game.teams[0];
   const buysLeft = game.humanBuysLeft;
 
   const summary = $("#armory-summary");
   if (summary) {
-    summary.textContent = `${buysLeft} purchase${buysLeft === 1 ? "" : "s"} left — tap a stall or shrine on the board. Permanent = one full buy. Max one Scrap per visit.`;
+    summary.textContent = `${buysLeft} purchase${buysLeft === 1 ? "" : "s"} left this visit. Each buy uses one slot (a Permanent counts as one full buy). Max one Scrap per visit.`;
   }
 
   const permColorSection = $("#perm-color-section");
   const showPermColor = !team.permanent && game.round >= PERMANENT_UNLOCK_ROUND;
   permColorSection?.classList.toggle("hidden", !showPermColor);
 
-  const hotspots = $("#armory-hotspots");
-  hotspots.innerHTML = "";
+  const addSection = (title, subtitle) => {
+    const sec = document.createElement("section");
+    sec.className = "armory-section";
+    sec.innerHTML = `<h4 class="armory-section-title">${escapeHtml(title)}</h4>`;
+    if (subtitle) {
+      const p = document.createElement("p");
+      p.className = "armory-hint";
+      p.innerHTML = subtitle;
+      sec.appendChild(p);
+    }
+    const grid = document.createElement("div");
+    grid.className = "armory-grid";
+    sec.appendChild(grid);
+    shop.appendChild(sec);
+    return { section: sec, grid };
+  };
 
-  for (const key of ARMORY_HOTSPOT_ORDER) {
-    const box = ARMORY_HOTSPOTS[key];
-    const meta = armoryItemMeta(game, key);
-    if (!box || !meta) continue;
-
+  const addItem = (grid, key, title, cost, enabled, desc) => {
+    const dur = SHOP_DURATION[key.replace(/^perm_/, "")] || "round";
+    const badge = SHOP_DURATION_LABEL[dur] || dur;
+    const wrap = document.createElement("div");
+    wrap.className = `shop-item-wrap duration-${dur}`;
     const b = document.createElement("button");
     b.type = "button";
-    b.className = `armory-hotspot group-${box.group} duration-${meta.duration} ${meta.enabled ? "" : "disabled"}`;
-    b.disabled = !meta.enabled;
-    b.style.left = `${box.l}%`;
-    b.style.top = `${box.t}%`;
-    b.style.width = `${box.w}%`;
-    b.style.height = `${box.h}%`;
-    b.dataset.key = key;
-    b.setAttribute(
-      "aria-label",
-      `${meta.title} — ${formatCost(meta.cost)}${meta.enabled ? "" : ` (${meta.lock})`}`,
-    );
+    b.className = `shop-item ${enabled ? "" : "disabled"}`;
+    b.disabled = !enabled;
     b.onclick = () => hooks.onBuy(key);
-
-    const costEl = document.createElement("span");
-    costEl.className = "armory-hotspot-cost";
-    costEl.textContent = formatCost(meta.cost);
-    b.appendChild(costEl);
-
-    if (!meta.enabled && meta.lock) {
-      const lockEl = document.createElement("span");
-      lockEl.className = "armory-hotspot-lock";
-      lockEl.textContent = meta.lock.includes("round") ? "🔒" : "—";
-      lockEl.title = meta.lock;
-      b.appendChild(lockEl);
+    b.innerHTML = `
+      <span class="shop-item-badge">${escapeHtml(badge)}</span>
+      <span class="shop-item-title">${escapeHtml(title)}</span>
+      <span class="shop-item-cost">${escapeHtml(formatCost(cost))}</span>`;
+    wrap.appendChild(b);
+    if (desc) {
+      const d = document.createElement("p");
+      d.className = "shop-item-desc";
+      d.textContent = desc;
+      wrap.appendChild(d);
     }
+    grid.appendChild(wrap);
+  };
 
-    b.addEventListener("focus", () => {
-      const hint = $("#armory-hint-line");
-      if (hint) hint.textContent = `${meta.title}: ${meta.desc}${meta.lock ? ` (${meta.lock})` : ""}`;
-    });
-
-    hotspots.appendChild(b);
+  const { grid: visitGrid } = addSection(
+    "Visit — instant (green Stash)",
+    "Happens immediately when you buy. Does not carry to the next round.",
+  );
+  for (const [k, cost] of Object.entries(VISIT_COSTS)) {
+    let ok = canAfford(team, cost) && buysLeft > 0;
+    if (k.startsWith("scrap") && game.humanScrapBuys >= 1) ok = false;
+    addItem(visitGrid, k, VISIT_LABELS[k] || k, cost, ok, VISIT_DESCRIPTIONS[k]);
   }
 
-  const hint = $("#armory-hint-line");
-  if (hint && !hint.textContent) {
-    hint.textContent = "Tap glowing stalls to buy. Costs use your team Stash.";
+  const { section: roundSection, grid: roundGrid } = addSection(
+    "Round buffs — next round only (blue Stash)",
+    "Active during the upcoming round only (e.g. War Drums on your first siege trick). Cleared after that round.",
+  );
+  const lockedRound = [];
+  for (const [k, cost] of Object.entries(ROUND_COSTS)) {
+    const minR = ROUND_MIN[k] || 1;
+    if (minR > game.round) {
+      lockedRound.push(`${ROUND_LABELS[k] || k} (round ${minR}+)`);
+      continue;
+    }
+    addItem(
+      roundGrid,
+      k,
+      ROUND_LABELS[k] || k,
+      cost,
+      canAfford(team, cost) && buysLeft > 0,
+      ROUND_DESCRIPTIONS[k],
+    );
+  }
+  if (lockedRound.length) {
+    const locked = document.createElement("p");
+    locked.className = "armory-locked";
+    locked.textContent = `Locked this visit: ${lockedRound.join(" · ")}.`;
+    roundSection.appendChild(locked);
+  }
+
+  const { section: permSection, grid: permGrid } = addSection(
+    "Permanents — rest of game (all four colors)",
+    "One Permanent per team for the whole match. Unlocks at round 4 Armory. Uses one full purchase.",
+  );
+  if (team.permanent) {
+    const owned = document.createElement("p");
+    owned.className = "armory-owned";
+    owned.innerHTML = `You already own: <strong>${escapeHtml(PERMANENT_NAMES[team.permanent])}</strong> (${escapeHtml(team.permanentColor)}).`;
+    permSection.appendChild(owned);
+  } else if (game.round < PERMANENT_UNLOCK_ROUND) {
+    const locked = document.createElement("p");
+    locked.className = "armory-locked";
+    locked.innerHTML = `Available starting <strong>round ${PERMANENT_UNLOCK_ROUND} Armory</strong> (after round ${PERMANENT_UNLOCK_ROUND - 1} tricks). You are finishing round ${game.round}.`;
+    permSection.appendChild(locked);
+  } else {
+    for (const [k, cost] of Object.entries(PERMANENT_COSTS)) {
+      addItem(
+        permGrid,
+        `perm_${k}`,
+        PERMANENT_NAMES[k],
+        cost,
+        canAfford(team, cost) && buysLeft > 0,
+        PERMANENT_DESCRIPTIONS[k],
+      );
+    }
   }
 
   panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
