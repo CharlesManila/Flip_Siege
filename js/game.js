@@ -41,6 +41,14 @@ import {
   stashValue,
   stashTotals,
 } from "./rules.js";
+import {
+  initPlayLog,
+  recordHumanArmoryBuy,
+  recordHumanCardPlay,
+  recordHumanTrophy,
+  recordTrickCompleted,
+  submitFinishedGameIfEligible,
+} from "./playLog.js";
 
 export function createRng(seed = Date.now()) {
   let s = seed >>> 0;
@@ -83,7 +91,12 @@ function recordCardPlayed(game, card, teamId) {
   markPlayedThisRound(game.teams[teamId], card.id);
 }
 
-export function newGame({ followMode = "must", seed = Date.now(), cooldownMechanic = true } = {}) {
+export function newGame({
+  followMode = "must",
+  seed = Date.now(),
+  cooldownMechanic = true,
+  playLogOptIn = true,
+} = {}) {
   const hp = followMode === "may" ? CASTLE_HP_MAY : CASTLE_HP_MUST;
   const deck = buildDeck();
   const rng = createRng(seed);
@@ -127,6 +140,7 @@ export function newGame({ followMode = "must", seed = Date.now(), cooldownMechan
     armoryStyles: ["balanced", "combat"],
     cooldownMechanic,
   };
+  initPlayLog(game, playLogOptIn);
   if (cooldownMechanic) {
     game.log.push(
       "Cooldown: played cards rest next deal (max 10 per team), then return to the pool.",
@@ -237,6 +251,7 @@ function endGame(game, reason = "castle") {
   else if (game.teams[0].castleHp <= 0) game.winner = 1;
   else game.winner = game.teams[0].castleHp >= game.teams[1].castleHp ? 0 : 1;
   game.log.push(reason === "timeout" ? "Match ended — highest castle wins." : "Castle destroyed!");
+  submitFinishedGameIfEligible(game, reason);
 }
 
 function addStash(team, card, value, source, game, teamId) {
@@ -356,6 +371,7 @@ export function chooseTrophy(game, cardId) {
   const entry = game.pendingTrophy.eligible.find((e) => e.card.id === cardId);
   if (!entry) return false;
   applyTrophy(game, entry.card, game.pendingTrophy.defender);
+  recordHumanTrophy(game, entry.card);
   const result = game.afterTrickResult;
   game.pendingTrophy = null;
   game.afterTrickResult = null;
@@ -480,6 +496,17 @@ export function playHumanCard(game, cardId) {
     game.phase === "calamity_reveal" ? false : p.teamId === game.siegerTeam;
   game.trickPlays.push({ player: p, card, siege });
   recordCardPlayed(game, card, p.teamId);
+  recordHumanCardPlay(game, card, {
+    phase: game.phase === "calamity_reveal" ? "calamity" : "trick",
+    isLead: game.trickPlays.length === 1,
+  });
+  if (game.phase === "calamity_reveal" && game.playLog) {
+    game.playLog.calamityPlays.push({
+      at: new Date().toISOString(),
+      round: game.round,
+      card: { id: card.id, color: card.color, mr: card.mr, tr: card.tr },
+    });
+  }
   if (!game.ledColor) game.ledColor = card.color;
   game.trickStep++;
   if (game.phase === "calamity_reveal") {
@@ -549,6 +576,7 @@ function finishCalamityRound(game) {
   game.trickPlays = [];
   game.trickOrder = [];
   game.tricksPlayed += 1;
+  recordTrickCompleted(game);
   game.phase = "playing";
 
   if (game.teams[0].castleHp <= 0 || game.teams[1].castleHp <= 0) {
@@ -617,6 +645,7 @@ export function needsHumanTrophyPick(game) {
 function afterTrick(game, result) {
   if (!result) return;
   game.tricksPlayed += 1;
+  recordTrickCompleted(game);
   game.trickPlays = [];
 
   if (game.teams[0].castleHp <= 0 || game.teams[1].castleHp <= 0) {
@@ -656,6 +685,7 @@ export function buyArmoryItem(game, key, permanentColor = null) {
     }
     game.humanBuysLeft -= 1;
     game.log.push(`You bought ${perm}.`);
+    recordHumanArmoryBuy(game, key, { permanent: perm, color: team.permanentColor });
     return { ok: true };
   }
 
@@ -674,6 +704,7 @@ export function buyArmoryItem(game, key, permanentColor = null) {
       team.castleHp = Math.min(team.castleMax, team.castleHp + 2);
       game.humanBuysLeft -= 1;
       game.log.push(`You repaired castle (+2 HP → ${team.castleHp}).`);
+      recordHumanArmoryBuy(game, key);
       return { ok: true };
     }
     if (key.startsWith("scrap")) {
@@ -692,6 +723,7 @@ export function buyArmoryItem(game, key, permanentColor = null) {
     team.skipBlueDeal = true;
     game.humanBuysLeft -= 1;
     game.log.push(`You bought ${key} for next round.`);
+    recordHumanArmoryBuy(game, key);
     return { ok: true };
   }
 
@@ -751,6 +783,7 @@ export function completeScrapPurchase(game, key, cardIds) {
     })
     .join(", ");
   game.log.push(`You scrapped ${labels} (${key}).`);
+  recordHumanArmoryBuy(game, key, { scrapped_ids: ids });
   return { ok: true };
 }
 

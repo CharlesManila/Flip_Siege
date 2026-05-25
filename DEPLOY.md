@@ -85,6 +85,12 @@ If the repo root is `BG/`, use the workflow at `.github/workflows/deploy-flip-si
 
 ---
 
+## Finished-game play logging (optional)
+
+To record **completed** online matches (human card plays, armory, winner — not abandoned games), follow **[docs/PLAY_LOG_SETUP.md](docs/PLAY_LOG_SETUP.md)** (free Supabase).
+
+---
+
 ## Checklist
 
 - [ ] `play/rules/rulebook.html` exists and matches `rules/rulebook.html`

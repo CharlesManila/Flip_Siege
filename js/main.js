@@ -12,6 +12,11 @@ import {
   skipArmory,
   validateScrapPurchase,
 } from "./game.js";
+import {
+  isPlayLogAvailable,
+  playLogOptInDefault,
+  savePlayLogOptIn,
+} from "./playLog.js";
 import { bindHandClicks, renderBoard } from "./ui.js";
 
 let game = null;
@@ -23,12 +28,29 @@ function closeDialogs() {
   document.getElementById("rules-dialog")?.close();
 }
 
+function initPlayLogCheckbox() {
+  const wrap = document.getElementById("play-log-opt-wrap");
+  const cb = document.getElementById("opt-play-log");
+  if (!wrap || !cb) return;
+  if (isPlayLogAvailable()) {
+    wrap.classList.remove("hidden");
+    cb.checked = playLogOptInDefault();
+  }
+}
+
 function startGame() {
   try {
     clearTimeout(tickTimer);
     closeDialogs();
     const follow = document.querySelector('input[name="follow"]:checked')?.value || "must";
-    game = newGame({ followMode: follow, seed: Date.now(), cooldownMechanic: true });
+    const optIn = document.getElementById("opt-play-log")?.checked ?? playLogOptInDefault();
+    savePlayLogOptIn(optIn);
+    game = newGame({
+      followMode: follow,
+      seed: Date.now(),
+      cooldownMechanic: true,
+      playLogOptIn: optIn && isPlayLogAvailable(),
+    });
     document.getElementById("screen-setup")?.classList.add("hidden");
     document.getElementById("screen-game")?.classList.remove("hidden");
     document.body.classList.remove("in-match", "your-turn");
@@ -144,6 +166,7 @@ function onPlayCard(cardId) {
   if (playHumanCard(game, cardId)) afterHumanPlay();
 }
 
+initPlayLogCheckbox();
 document.getElementById("btn-start")?.addEventListener("click", startGame);
 
 document.getElementById("btn-play-again")?.addEventListener("click", startGame);

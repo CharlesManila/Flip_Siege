@@ -1002,6 +1002,25 @@ body {
   opacity: 0.85;
 }
 
+.play-log-opt {
+  display: block;
+  margin: 1rem 0 0.5rem;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  background: #0004;
+  border-radius: 10px;
+  border: 2px solid #fff2;
+  cursor: pointer;
+}
+
+.play-log-opt input {
+  margin-right: 0.5rem;
+  vertical-align: middle;
+  min-width: 1.1rem;
+  min-height: 1.1rem;
+}
+
 /* —— Mobile & touch (phones) —— */
 @media (max-width: 768px) {
   body {
