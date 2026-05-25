@@ -4,12 +4,12 @@ import {
   pickCard,
   pickCalamityCard,
   pickTrophyDefender,
-  runArmoryAI,
   PLAYER_STYLES,
 } from "./ai.js";
 import {
   calamityDefendOrder,
   resolveCalamityFromPlays,
+  returnCalamityDeckCards,
   startCalamityTrick,
 } from "./calamity.js";
 import {
@@ -31,16 +31,25 @@ import {
   livingPool,
   markPlayedThisRound,
   maxTricks,
+  applyPaidColorSkip,
+  benchCost,
   payStash,
   recyclePaid,
   rotateRoundCooldown,
+  returnBenchedToReserve,
   roundEnds,
   scaleCombat,
   scaledBuff,
   siegerTeamForTrick,
+  trickPlayOrder,
   stashValue,
   stashTotals,
 } from "./rules.js";
+import {
+  benchCardById,
+  resumeArmoryDraftAfterBench,
+  startArmoryDraft,
+} from "./armoryDraft.js";
 import {
   initPlayLog,
   recordHumanArmoryBuy,
@@ -63,6 +72,7 @@ function makeTeam(id, deck, hp) {
     id,
     deck: deck.map(cloneCard),
     reserve: [],
+    benched: [],
     removedIds: new Set(),
     stash: [],
     castleHp: hp,
@@ -73,6 +83,7 @@ function makeTeam(id, deck, hp) {
     pendingBuffs: new Set(),
     activeBuffs: new Set(),
     skipBlueDeal: false,
+    skipColorsDeal: new Set(),
     marchTax: false,
     borrowedOut: new Set(),
     warDrumsUsed: false,
@@ -128,14 +139,50 @@ export function newGame({
     afterTrickResult: null,
     calamityDone: false,
     calamityReveal: null,
-    humanScrapBuys: 0,
+    humanBenchBuys: 0,
     winner: null,
     teams: [makeTeam(0, deck, hp), makeTeam(1, deck, hp)],
     players: [
-      { id: 0, teamId: 0, hand: [], name: "You", human: true, aiStyle: PLAYER_STYLES.human },
-      { id: 1, teamId: 0, hand: [], name: "Ally", human: false, aiStyle: PLAYER_STYLES.ally },
-      { id: 2, teamId: 1, hand: [], name: "Enemy A", human: false, aiStyle: PLAYER_STYLES.enemy0 },
-      { id: 3, teamId: 1, hand: [], name: "Enemy B", human: false, aiStyle: PLAYER_STYLES.enemy1 },
+      {
+        id: 0,
+        teamId: 0,
+        hand: [],
+        name: "You",
+        human: true,
+        aiStyle: PLAYER_STYLES.human,
+        workerSlot: null,
+        lastWorkerSlot: null,
+      },
+      {
+        id: 1,
+        teamId: 0,
+        hand: [],
+        name: "Ally",
+        human: false,
+        aiStyle: PLAYER_STYLES.ally,
+        workerSlot: null,
+        lastWorkerSlot: null,
+      },
+      {
+        id: 2,
+        teamId: 1,
+        hand: [],
+        name: "Enemy A",
+        human: false,
+        aiStyle: PLAYER_STYLES.enemy0,
+        workerSlot: null,
+        lastWorkerSlot: null,
+      },
+      {
+        id: 3,
+        teamId: 1,
+        hand: [],
+        name: "Enemy B",
+        human: false,
+        aiStyle: PLAYER_STYLES.enemy1,
+        workerSlot: null,
+        lastWorkerSlot: null,
+      },
     ],
     armoryStyles: ["balanced", "combat"],
     cooldownMechanic,
@@ -182,7 +229,10 @@ export function dealRound(game) {
     t.pendingBuffs = new Set();
     t.sallyGate = t.activeBuffs.has("sally_gate");
     let pool = livingPool(t, game.cooldownMechanic);
-    if (t.skipBlueDeal) {
+    if (t.skipColorsDeal?.size) {
+      pool = pool.filter((c) => !t.skipColorsDeal.has(c.color));
+      t.skipColorsDeal.clear();
+    } else if (t.skipBlueDeal) {
       pool = pool.filter((c) => c.color !== "blue");
       t.skipBlueDeal = false;
     }
@@ -203,6 +253,15 @@ export function dealRound(game) {
         `${t.id === 0 ? "Your team" : "Enemies"}: ${resting} card${resting === 1 ? "" : "s"} on cooldown (not in this deal).`,
       );
     }
+    const benchedN = t.benched?.length ?? 0;
+    if (benchedN > 0) {
+      game.log.push(
+        `${t.id === 0 ? "Your team" : "Enemies"}: ${benchedN} benched card${benchedN === 1 ? "" : "s"} skip this deal.`,
+      );
+    }
+  }
+  for (const t of game.teams) {
+    returnBenchedToReserve(t);
   }
   const calamity = isCalamityRound(game.round) ? " · Calamity last trick" : "";
   game.log.push(`Round ${game.round} — dealt ${hs} cards each (max ${game.maxTricks} tricks)${calamity}.`);
@@ -217,13 +276,7 @@ function setupTrick(game) {
 
 function beginArmory(game) {
   rotateRoundCooldown(game);
-  game.phase = "armory";
-  game.armoryTeam = 0;
-  game.humanBuysLeft = 2;
-  game.humanScrapBuys = 0;
-  game.subphase = "armory_human";
-  runArmoryAI(game, 1);
-  game.log.push("Armory — enemies shopped. Your turn (2 purchases).");
+  startArmoryDraft(game, finishArmoryPhase);
 }
 
 export function finishArmoryPhase(game) {
@@ -357,6 +410,14 @@ function resolveTrick(game, plays) {
   };
 }
 
+/** none | auto | pick — auto when one eligible or Block ≥ resolved Assault. */
+export function resolveTrophyAwards(eligible, assault, block) {
+  if (!eligible.length) return { mode: "none", auto: [], pick: [] };
+  if (eligible.length === 1) return { mode: "auto", auto: eligible, pick: [] };
+  if (block >= assault) return { mode: "auto", auto: eligible, pick: [] };
+  return { mode: "pick", auto: [], pick: eligible };
+}
+
 function applyTrophy(game, card, defender) {
   const dt = game.teams[defender];
   addStash(dt, card, card.mr, "trophy", game, defender);
@@ -364,6 +425,18 @@ function applyTrophy(game, card, defender) {
   game.log.push(
     `Trophy: ${card.color} ${card.mr}/${card.tr} (monster/tower) → your Stash (value ${card.mr}).`,
   );
+}
+
+function applyTrophiesAuto(game, defender, entries) {
+  for (const { card } of entries) {
+    applyTrophy(game, card, defender);
+    if (game.players.some((p) => p.human && p.teamId === defender)) {
+      recordHumanTrophy(game, card);
+    }
+  }
+  if (entries.length > 1) {
+    game.log.push(`Trophies: took all ${entries.length} qualifying monsters (Block ≥ Assault).`);
+  }
 }
 
 export function chooseTrophy(game, cardId) {
@@ -390,12 +463,7 @@ export function processPendingTrophy(game) {
 }
 
 function playOrder(game, leaderId, sieger) {
-  const def = 1 - sieger;
-  const sp = teamPlayers(game, sieger);
-  const partner = sp[0].id === leaderId ? sp[1].id : sp[0].id;
-  const d0 = teamPlayers(game, def)[0].id;
-  const d1 = teamPlayers(game, def)[1].id;
-  return [leaderId, partner, d0, d1];
+  return trickPlayOrder(game, leaderId, sieger);
 }
 
 export function isCalamityLead(game) {
@@ -519,12 +587,24 @@ export function playHumanCard(game, cardId) {
 
 function finishTrickPlays(game) {
   const result = resolveTrick(game, game.trickPlays);
-  if (result.eligibleTrophies?.length) {
+  const { mode, auto, pick } = resolveTrophyAwards(
+    result.eligibleTrophies || [],
+    result.assault,
+    result.block,
+  );
+  if (mode === "auto") {
+    applyTrophiesAuto(game, result.defender, auto);
+    completeAfterTrick(game, result);
+    return;
+  }
+  if (mode === "pick") {
     game.afterTrickResult = result;
     game.pendingTrophy = {
       defender: result.defender,
-      eligible: result.eligibleTrophies,
+      eligible: pick,
       block: result.block,
+      assault: result.assault,
+      mode: "pick",
     };
     game.phase = "trophy_pick";
     return;
@@ -555,7 +635,9 @@ export function advanceCalamityStep(game) {
 }
 
 function finishCalamityPlays(game) {
+  const r = game.calamityReveal;
   const teamResults = resolveCalamityFromPlays(game, game.trickPlays);
+  returnCalamityDeckCards(game, r.c1Team, r.c2Team, r.c1, r.c2);
   for (const { player, card } of game.trickPlays) {
     if (card.color !== game.calamityReveal.led) {
       const team = game.teams[player.teamId];
@@ -638,6 +720,7 @@ export function advanceAI(game) {
 
 export function needsHumanTrophyPick(game) {
   if (game.phase !== "trophy_pick" || !game.pendingTrophy) return false;
+  if (game.pendingTrophy.mode !== "pick") return false;
   const { defender } = game.pendingTrophy;
   return game.players.some((p) => p.human && p.teamId === defender);
 }
@@ -690,13 +773,13 @@ export function buyArmoryItem(game, key, permanentColor = null) {
   }
 
   if (VISIT_COSTS[key]) {
-    if (key.startsWith("scrap") && game.humanScrapBuys >= 1) {
-      return { ok: false, msg: "Max one Scrap per visit." };
+    if (key.startsWith("bench") && game.humanBenchBuys >= 1) {
+      return { ok: false, msg: "Max one Bench per visit." };
     }
     const cost = VISIT_COSTS[key];
     if (!canAffordTeam(team, cost)) return { ok: false, msg: "Cannot afford." };
-    if (key === "scrap_1" && team.reserve.length < 1) return { ok: false, msg: "Reserve empty." };
-    if (key === "scrap_2" && team.reserve.length < 2) return { ok: false, msg: "Reserve too small." };
+    if (key === "bench_1" && team.reserve.length < 1) return { ok: false, msg: "Reserve empty." };
+    if (key === "bench_2" && team.reserve.length < 2) return { ok: false, msg: "Reserve too small." };
     const paid = payStash(team, cost, game, 0);
     if (!paid) return { ok: false, msg: "Payment failed." };
     game.recycle.push(...recyclePaid(paid));
@@ -707,8 +790,8 @@ export function buyArmoryItem(game, key, permanentColor = null) {
       recordHumanArmoryBuy(game, key);
       return { ok: true };
     }
-    if (key.startsWith("scrap")) {
-      return { ok: false, msg: "Choose reserve cards to remove.", needsScrapPick: true, scrapKey: key };
+    if (key.startsWith("bench")) {
+      return { ok: false, msg: "Choose reserve cards to bench.", needsBenchPick: true, benchKey: key };
     }
   }
 
@@ -735,29 +818,29 @@ function canAffordTeam(team, cost) {
   return ["green", "blue", "red", "yellow"].every((c) => t[c] >= (cost[c] || 0));
 }
 
-/** Validate Scrap purchase (no payment yet). */
-export function validateScrapPurchase(game, key) {
-  const team = game.teams[0];
+/** Validate Bench purchase (no payment yet). */
+export function validateBenchPurchase(game, key, teamId = 0) {
+  const team = game.teams[teamId];
   if (game.phase !== "armory") return { ok: false, msg: "Not at Armory." };
-  if (game.humanBuysLeft <= 0) return { ok: false, msg: "No purchases left." };
-  if (key.startsWith("scrap") && game.humanScrapBuys >= 1) {
-    return { ok: false, msg: "Max one Scrap per visit." };
+  const benchBuys = game.armoryDraft?.teamBenchBuys?.[teamId] ?? game.humanBenchBuys ?? 0;
+  if (key.startsWith("bench") && benchBuys >= 1) {
+    return { ok: false, msg: "Max one Bench per visit." };
   }
   const cost = VISIT_COSTS[key];
-  if (!cost) return { ok: false, msg: "Unknown Scrap." };
+  if (!cost) return { ok: false, msg: "Unknown Bench." };
   if (!canAffordTeam(team, cost)) return { ok: false, msg: "Cannot afford." };
-  const need = key === "scrap_2" ? 2 : 1;
+  const need = key === "bench_2" ? 2 : 1;
   if (team.reserve.length < need) {
     return { ok: false, msg: need === 2 ? "Reserve too small." : "Reserve empty." };
   }
   return { ok: true, count: need, cost };
 }
 
-/** Pay for Scrap and permanently remove chosen cards from reserve. */
-export function completeScrapPurchase(game, key, cardIds) {
-  const v = validateScrapPurchase(game, key);
+/** Pay for Bench — cards skip next deal, then return to reserve top. */
+export function completeBenchPurchase(game, key, cardIds, teamId = 0) {
+  const v = validateBenchPurchase(game, key, teamId);
   if (!v.ok) return v;
-  const team = game.teams[0];
+  const team = game.teams[teamId];
   const need = v.count;
   const ids = [...new Set(cardIds)];
   if (ids.length !== need) {
@@ -768,37 +851,40 @@ export function completeScrapPurchase(game, key, cardIds) {
       return { ok: false, msg: "Card not in reserve." };
     }
   }
-  const paid = payStash(team, v.cost, game, 0);
+
+  const pb = game.pendingBench;
+  const cost = pb?.draftChoice?.bench ? benchCost(pb.draftChoice.bench) : v.cost;
+  const paid = payStash(team, cost, game, teamId);
   if (!paid) return { ok: false, msg: "Payment failed." };
   game.recycle.push(...recyclePaid(paid));
-  for (const id of ids) {
-    scrapCardById(team, id);
+  applyPaidColorSkip(team, cost);
+  for (const id of ids) benchCardById(team, id);
+
+  if (game.armoryDraft?.teamBenchBuys) {
+    game.armoryDraft.teamBenchBuys[teamId] += 1;
+    const labels = ids
+      .map((id) => {
+        const c = team.deck.find((x) => x.id === id) || team.benched.find((x) => x.id === id);
+        return c ? cardLabel(c, true) : id;
+      })
+      .join(", ");
+    game.log.push(`You benched ${labels} (${key}).`);
+    recordHumanArmoryBuy(game, key, { benched_ids: ids });
+    resumeArmoryDraftAfterBench(game);
+    return { ok: true };
   }
-  game.humanScrapBuys = (game.humanScrapBuys || 0) + 1;
+
+  game.humanBenchBuys = (game.humanBenchBuys || 0) + 1;
   game.humanBuysLeft -= 1;
   const labels = ids
     .map((id) => {
-      const c = team.deck.find((x) => x.id === id);
+      const c = team.deck.find((x) => x.id === id) || team.benched.find((x) => x.id === id);
       return c ? cardLabel(c, true) : id;
     })
     .join(", ");
-  game.log.push(`You scrapped ${labels} (${key}).`);
-  recordHumanArmoryBuy(game, key, { scrapped_ids: ids });
+  game.log.push(`You benched ${labels} — skip next deal, then back to reserve top (${key}).`);
+  recordHumanArmoryBuy(game, key, { benched_ids: ids });
   return { ok: true };
-}
-
-function scrapCardById(team, cardId) {
-  const i = team.reserve.findIndex((c) => c.id === cardId);
-  if (i < 0) return false;
-  const c = team.reserve.splice(i, 1)[0];
-  team.removedIds.add(c.id);
-  return true;
-}
-
-function scrapOne(team, rng) {
-  if (!team.reserve.length) return;
-  const i = Math.floor(rng() * team.reserve.length);
-  scrapCardById(team, team.reserve[i].id);
 }
 
 export function skipArmory(game) {

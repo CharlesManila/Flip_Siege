@@ -86,6 +86,8 @@
               </select>
             </label>
           </div>
+          <div id="armory-draft-board" class="armory-draft-board hidden"></div>
+          <div id="armory-slot-choices" class="armory-slot-choices hidden"></div>
           <div id="armory-shop"></div>
           <button type="button" id="btn-end-armory" class="hidden">Done shopping → next round</button>
         </div>
@@ -93,14 +95,14 @@
     </section>
 
     <dialog id="scrap-dialog" class="scrap-dialog">
-      <h2>Scrap from reserve</h2>
+      <h2>Bench from reserve</h2>
       <p id="scrap-prompt" class="scrap-prompt">
-        Choose card(s) to remove permanently from your team reserve.
+        Choose card(s) to bench — they skip the next deal only, then return to the top of your reserve.
       </p>
       <div id="scrap-choices" class="scrap-choices"></div>
       <div class="scrap-dialog-actions">
         <button type="button" id="btn-scrap-cancel" class="btn-secondary">Cancel</button>
-        <button type="button" id="btn-scrap-confirm" disabled>Confirm scrap</button>
+        <button type="button" id="btn-scrap-confirm" disabled>Confirm bench</button>
       </div>
     </dialog>
 
@@ -117,13 +119,13 @@
       <p><a href="rules/rulebook.html" target="_blank">Open full rulebook</a> for every edge case.</p>
       <ul>
         <li><strong>Goal:</strong> enemy castle 0 HP (any round).</li>
-        <li><strong>Trick:</strong> siege plays monsters, defense plays towers. Led color = lead monster color.</li>
+        <li><strong>Trick:</strong> play order alternates teams — siege lead, defender, siege partner, defender.</li>
         <li><strong>Follow:</strong> play led color if you can (may-follow @ 68 HP). Siege alternates each trick; calamity rounds 2 &amp; 4.</li>
         <li><strong>Calamity:</strong> last trick flips two reserve monsters (ranks add to Assault); both teams tower-up — you choose your defense card.</li>
         <li><strong>Damage:</strong> Assault − Block. Off-color → Stash (rank = value).</li>
         <li><strong>Round ends:</strong> anyone at 1 card, or max tricks → Armory (2 buys).</li>
         <li><strong>Cooldown:</strong> played cards skip next deal (max 10 resting per team).</li>
-        <li><strong>Armory:</strong> green = instant · blue = next round · Permanent = game (round 4+).</li>
+        <li><strong>Armory:</strong> green = repair · red = bench reserve (skip 1 deal) · blue = next round · Permanent = game (round 4+).</li>
         <li><strong>Permanent color:</strong> pick before buying; ties Sigil/Mastery/etc. to that color.</li>
       </ul>
       <button type="button" id="btn-close-rules">Close</button>

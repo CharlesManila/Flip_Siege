@@ -40,13 +40,21 @@ export function calamityReservePrep(team, round) {
   return { blockBonus, extra };
 }
 
-function popReserve(game, preferredTeam) {
+/** Top reserve monster for calamity flip (removed until returned after resolve). */
+function takeReserveTop(game, preferredTeam) {
   for (const tid of [preferredTeam, 1 - preferredTeam]) {
-    if (game.teams[tid].reserve.length) {
-      return game.teams[tid].reserve.pop(0);
+    const team = game.teams[tid];
+    if (team.reserve.length) {
+      return { card: team.reserve.shift(), teamId: tid };
     }
   }
   return null;
+}
+
+/** Flipped deck monsters were not played — return to top of reserve (no cooldown). */
+export function returnCalamityDeckCards(game, c1Team, c2Team, c1, c2) {
+  if (c1) game.teams[c1Team].reserve.unshift(c1);
+  if (c2) game.teams[c2Team].reserve.unshift(c2);
 }
 
 /** Flip deck monsters; player chooses tower defenses in a follow-up step. */
@@ -54,9 +62,11 @@ export function startCalamityTrick(game) {
   const deck1Team = game.blindReserveTeam;
   game.blindReserveTeam = 1 - game.blindReserveTeam;
   const deck2Team = 1 - deck1Team;
-  const c1 = popReserve(game, deck1Team);
-  const c2 = popReserve(game, deck2Team);
-  if (!c1 || !c2) return null;
+  const t1 = takeReserveTop(game, deck1Team);
+  const t2 = takeReserveTop(game, deck2Team);
+  if (!t1 || !t2) return null;
+  const c1 = t1.card;
+  const c2 = t2.card;
 
   const led = c1.color;
   const assault = calamityAssaultFromRanks(c1.mr, c2.mr);
@@ -69,6 +79,8 @@ export function startCalamityTrick(game) {
     step: "deck",
     deck1Team,
     deck2Team,
+    c1Team: t1.teamId,
+    c2Team: t2.teamId,
     c1: cloneCard(c1),
     c2: cloneCard(c2),
     led,

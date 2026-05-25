@@ -7,7 +7,8 @@ export const CASTLE_HP_MAY = 68;
 export const COOLDOWN_MAX_PER_TEAM = 10;
 export const CASTLE_DESTROY_MIN_ROUND = 1;
 export const BUYS_PER_ARMORY = 2;
-export const SCRAP_MAX_PER_ARMORY = 1;
+export const BENCH_MAX_PER_ARMORY = 1;
+/** @deprecated */ export const SCRAP_MAX_PER_ARMORY = BENCH_MAX_PER_ARMORY;
 export const PERMANENT_UNLOCK_ROUND = 4;
 export const SIEGE_SOAK = 0;
 export const TIER_R5 = 5;
@@ -15,10 +16,128 @@ export const TIER_R6 = 10;
 export const FINISHER_BASE = 9;
 export const ROUND_BUFF_BASE = 2;
 
+/** Four-slot worker board (matches sim lowered costs). */
+export const ARMORY_SLOTS = ["green", "yellow", "blue", "red"];
+export const ARMORY_GLOBAL_EXCLUSIVE = new Set(["red", "blue"]);
+export const GREEN_REPAIR_BASE = 4;
+export const GREEN_REPAIR_MULT = 2.2;
+export const RED_BENCH_BASE = 3;
+export const RED_BENCH_MULT = 2.35;
+export const MAX_REPAIR_PER_VISIT = 6;
+export const MAX_BENCH_PER_VISIT = 3;
+export const FOUR_SLOT_PICK_THRESHOLD = 8;
+
+export const YELLOW_ATTACK_TIERS = {
+  low: { buff: "war_drums", cost: { yellow: 10 }, minRound: 1 },
+  high: { buff: "siege_breaker", cost: { yellow: 18 }, minRound: 5 },
+};
+export const BLUE_DEFENSE_TIERS = {
+  low: { buff: "boiling_oil", cost: { blue: 10 }, minRound: 1 },
+  high: { buff: "iron_curtain", cost: { blue: 18 }, minRound: 5 },
+};
+
+export function repairCost(heal) {
+  const g = Math.max(1, Math.round(GREEN_REPAIR_BASE * GREEN_REPAIR_MULT ** (heal - 1)));
+  return { green: g };
+}
+
+export function benchCost(n) {
+  const r = Math.max(1, Math.round(RED_BENCH_BASE * RED_BENCH_MULT ** (n - 1)));
+  return { red: r };
+}
+
+export function maxRepairHeal(team) {
+  const missing = team.castleMax - team.castleHp;
+  if (missing <= 0) return 0;
+  return Math.min(MAX_REPAIR_PER_VISIT, missing);
+}
+
+export function yellowAttackTierCost(tier, round) {
+  const t = YELLOW_ATTACK_TIERS[tier];
+  return round >= t.minRound ? t.cost : null;
+}
+
+export function blueDefenseTierCost(tier, round) {
+  const t = BLUE_DEFENSE_TIERS[tier];
+  return round >= t.minRound ? t.cost : null;
+}
+
+export function yellowAttackTierKey(tier) {
+  return YELLOW_ATTACK_TIERS[tier]?.buff;
+}
+
+export function blueDefenseTierKey(tier) {
+  return BLUE_DEFENSE_TIERS[tier]?.buff;
+}
+
+export function fourSlotBuffKey(slot, choice) {
+  if (slot === "yellow" && choice?.tier) return yellowAttackTierKey(choice.tier);
+  if (slot === "blue" && choice?.tier) return blueDefenseTierKey(choice.tier);
+  return null;
+}
+
+export function applyPaidColorSkip(team, cost) {
+  if (!team.skipColorsDeal) team.skipColorsDeal = new Set();
+  for (const [color, amount] of Object.entries(cost)) {
+    if (amount > 0 && COLORS.includes(color)) team.skipColorsDeal.add(color);
+  }
+}
+
+/** Siege lead → defender → siege partner → defender (alternating teams). */
+export function trickPlayOrder(game, leaderId, sieger) {
+  const def = 1 - sieger;
+  const sp = game.players.filter((p) => p.teamId === sieger);
+  const partner = sp[0].id === leaderId ? sp[1].id : sp[0].id;
+  const dt = game.players.filter((p) => p.teamId === def);
+  return [leaderId, dt[0].id, partner, dt[1].id];
+}
+
+/** Worker draft order = trick 1 of upcoming round (before firstSieger flips). */
+export function armoryPickOrder(game) {
+  const nextSieger = 1 - game.firstSieger;
+  const st = game.players.filter((p) => p.teamId === nextSieger);
+  return trickPlayOrder(game, st[0].id, nextSieger);
+}
+
+export function isSlotOccupiedForPlayer(game, slot, player) {
+  const takers = game.players.filter((p) => p.workerSlot === slot);
+  if (ARMORY_GLOBAL_EXCLUSIVE.has(slot)) return takers.length > 0;
+  return takers.some((p) => p.teamId === player.teamId);
+}
+
+export function legalFourSlotChoices(game, team, slot) {
+  const rn = game.round;
+  const out = [];
+  if (slot === "green") {
+    for (let heal = 1; heal <= maxRepairHeal(team); heal++) {
+      const cost = repairCost(heal);
+      if (canAfford(team, cost)) out.push({ heal });
+    }
+  } else if (slot === "red") {
+    for (let n = 1; n <= Math.min(MAX_BENCH_PER_VISIT, team.reserve.length); n++) {
+      if (canAfford(team, benchCost(n))) out.push({ bench: n });
+    }
+  } else if (slot === "yellow") {
+    for (const tier of ["low", "high"]) {
+      if (yellowAttackTierCost(tier, rn) && canAfford(team, yellowAttackTierCost(tier, rn))) {
+        out.push({ tier });
+      }
+    }
+  } else if (slot === "blue") {
+    for (const tier of ["low", "high"]) {
+      if (blueDefenseTierCost(tier, rn) && canAfford(team, blueDefenseTierCost(tier, rn))) {
+        out.push({ tier });
+      }
+    }
+  }
+  return out;
+}
+
+/** Legacy 2-buy visit list (bench still used via four-slot). */
 export const VISIT_COSTS = {
   repair: { green: 3 },
-  scrap_1: { green: 3 },
-  scrap_2: { green: 5 },
+  bench_1: { red: 3 },
+  bench_2: { red: 7 },
 };
 
 export const ROUND_COSTS = {
@@ -84,21 +203,23 @@ export const PERMANENT_DESCRIPTIONS = {
 
 export const VISIT_LABELS = {
   repair: "Repair castle",
-  scrap_1: "Scrap reserve (1 card)",
-  scrap_2: "Scrap reserve (2 cards)",
+  bench_1: "Bench reserve (1 card)",
+  bench_2: "Bench reserve (2 cards)",
 };
 
 export const VISIT_DESCRIPTIONS = {
   repair: "Heal +2 HP now (cannot exceed starting HP).",
-  scrap_1: "Remove 1 card from your reserve permanently (uses 1 purchase).",
-  scrap_2: "Remove 2 cards from reserve permanently (uses 1 purchase).",
+  bench_1:
+    "Bench 1 reserve card: it skips the next deal only, then returns to the top of your reserve (uses 1 purchase).",
+  bench_2:
+    "Bench 2 reserve cards: they skip the next deal only, then return to reserve top (uses 1 purchase).",
 };
 
 /** UI badge: how long the effect lasts. */
 export const SHOP_DURATION = {
   repair: "instant",
-  scrap_1: "instant",
-  scrap_2: "instant",
+  bench_1: "instant",
+  bench_2: "instant",
   war_drums: "round",
   boiling_oil: "round",
   march_tax: "round",
@@ -301,14 +422,25 @@ export function recyclePaid(paid) {
 
 export function livingPool(team, useCooldown = false) {
   const inStash = new Set(team.stash.map((p) => p.card.id));
+  const benched = new Set((team.benched || []).map((c) => c.id));
   return team.deck.filter(
     (c) =>
       !team.removedIds.has(c.id) &&
+      !benched.has(c.id) &&
       !inStash.has(c.id) &&
       !team.borrowedOut.has(c.id) &&
       !team.purgedColors.has(c.color) &&
       (!useCooldown || !team.cooldownIds?.has(c.id)),
   );
+}
+
+/** After a deal, benched cards return to the top of reserve (pool-safe). */
+export function returnBenchedToReserve(team) {
+  if (!team.benched?.length) return;
+  for (let i = team.benched.length - 1; i >= 0; i--) {
+    team.reserve.unshift(team.benched[i]);
+  }
+  team.benched = [];
 }
 
 /** Card was played to a trick this round (cooldown rules). */

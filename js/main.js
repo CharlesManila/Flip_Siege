@@ -1,16 +1,18 @@
 import {
+  advanceArmoryDraft,
+  armoryDraftPass,
+  humanArmoryDraftTurn,
+  pickArmoryWorker,
+} from "./armoryDraft.js";
+import {
   advanceAI,
-  buyArmoryItem,
   chooseTrophy,
-  completeScrapPurchase,
-  confirmArmoryDone,
+  completeBenchPurchase,
   advanceCalamityStep,
   humanMustPlay,
   needsHumanTrophyPick,
   newGame,
   playHumanCard,
-  skipArmory,
-  validateScrapPurchase,
 } from "./game.js";
 import {
   isPlayLogAvailable,
@@ -79,6 +81,14 @@ function tick() {
     }
     return;
   }
+  if (game.phase === "armory" && game.subphase === "armory_draft" && !humanArmoryDraftTurn(game)) {
+    advanceArmoryDraft(game, true);
+    render();
+    if (game.phase === "armory" && game.subphase === "armory_draft" && !humanArmoryDraftTurn(game)) {
+      scheduleAI();
+    }
+    return;
+  }
   if (game.phase === "playing" && !humanMustPlay(game)) {
     advanceAI(game);
   } else if (game.phase === "trophy_pick") {
@@ -86,15 +96,21 @@ function tick() {
   }
   render();
   if (game.phase === "trophy_pick") return;
+  if (game.phase === "armory" && game.subphase === "armory_draft") return;
   if (game.phase === "playing" && !humanMustPlay(game)) scheduleAI();
 }
 
 function render() {
   renderBoard(game, {
-    onBuy: onBuy,
+    onArmoryPass: () => {
+      armoryDraftPass(game);
+      render();
+      scheduleAI();
+    },
+    onArmoryWorker: (slot, choice) => pickArmoryWorker(game, slot, choice),
     onTrophy: onTrophy,
-    onScrapConfirm: onScrapConfirm,
-    onScrapCancel: onScrapCancel,
+    onBenchConfirm: onBenchConfirm,
+    onBenchCancel: onBenchCancel,
     onCalamityContinue: () => {
       if (!game) return;
       advanceCalamityStep(game);
@@ -120,44 +136,20 @@ function afterHumanPlay() {
   if (game.phase !== "trophy_pick") scheduleAI();
 }
 
-function onBuy(key) {
-  let permColor = document.querySelector("#perm-color")?.value || "green";
-  if (key.startsWith("perm_") && !game.teams[0].permanent) {
-    const perm = key.slice(5);
-    if (perm === "purge") {
-      permColor = prompt("Purge which color? (green/blue/red/yellow)", "green") || "green";
-    }
-    const r = buyArmoryItem(game, key, permColor);
-    if (!r.ok) alert(r.msg);
-    else render();
-    return;
-  }
-  if (key.startsWith("scrap")) {
-    const v = validateScrapPurchase(game, key);
-    if (!v.ok) {
-      alert(v.msg);
-      return;
-    }
-    game.pendingScrap = { key, count: v.count, selected: new Set() };
-    render();
-    return;
-  }
-  const r = buyArmoryItem(game, key);
-  if (!r.ok) alert(r.msg);
-  else render();
-}
-
-function onScrapConfirm(key, cardIds) {
-  const r = completeScrapPurchase(game, key, cardIds);
+function onBenchConfirm(key, cardIds) {
+  const teamId = game.pendingBench?.teamId ?? 0;
+  const r = completeBenchPurchase(game, key, cardIds, teamId);
   if (!r.ok) {
     alert(r.msg);
     return false;
   }
   render();
+  scheduleAI();
   return true;
 }
 
-function onScrapCancel() {
+function onBenchCancel() {
+  game.pendingBench = null;
   render();
 }
 
@@ -171,13 +163,6 @@ document.getElementById("btn-start")?.addEventListener("click", startGame);
 
 document.getElementById("btn-play-again")?.addEventListener("click", startGame);
 
-document.getElementById("btn-end-armory")?.addEventListener("click", () => {
-  if (!game || game.phase !== "armory") return;
-  skipArmory(game);
-  confirmArmoryDone(game);
-  render();
-  scheduleAI();
-});
 
 document.getElementById("btn-new")?.addEventListener("click", () => {
   clearTimeout(tickTimer);

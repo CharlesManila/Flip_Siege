@@ -267,6 +267,93 @@ body {
   cursor: not-allowed;
 }
 
+.armory-draft-board {
+  margin: 1rem 0;
+}
+
+.armory-stations-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.armory-station {
+  border: 3px solid #000;
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: #fff2;
+}
+
+.armory-station.station-green {
+  background: #3d9b5222;
+}
+.armory-station.station-yellow {
+  background: #e9c46a33;
+}
+.armory-station.station-blue {
+  background: #4a90d922;
+}
+.armory-station.station-red {
+  background: #e6394622;
+}
+
+.station-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.station-occupant {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.station-pick {
+  width: 100%;
+  font-family: inherit;
+  padding: 0.4rem;
+  border: 3px solid #000;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.armory-draft-pass-row {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.armory-slot-choices {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  border: 3px dashed #000;
+  border-radius: 12px;
+  background: #fffa;
+}
+
+.armory-choice-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.armory-choice-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border: 3px solid #000;
+  border-radius: 10px;
+  background: #fff;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+#armory-shop.hidden {
+  display: none;
+}
+
 .trophy-stash {
   font-weight: 700;
   margin-top: 0.25rem;

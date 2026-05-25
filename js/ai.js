@@ -389,7 +389,7 @@ function dominantDeckColor(team) {
   return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
 }
 
-function pickPermanentChoice(team, options, rng) {
+export function pickPermanentChoice(team, options, rng) {
   for (const key of ["sigil", "creed", "crest", "mastery", "purge"]) {
     if (!options.includes(key)) continue;
     if (key === "purge" && rand(rng) < 0.12) return key;
@@ -423,13 +423,11 @@ function armoryActionScore(game, team, teamId, key) {
     return 12;
   }
 
-  if (key === "scrap_1" || key === "scrap_2") {
-    const n = key === "scrap_2" ? 2 : 1;
+  if (key === "bench_1" || key === "bench_2") {
+    const n = key === "bench_2" ? 2 : 1;
     if (team.reserve.length < n) return -20;
-    if (team.reserve.length < CALAMITY_PREP_MIN_RESERVE && nextCal) {
-      return 70 - team.reserve.length * 6;
-    }
-    if (team.reserve.length > 11) return 25;
+    if (team.reserve.length > 11) return 12;
+    if (team.reserve.length < CALAMITY_PREP_MIN_RESERVE && nextCal) return -20;
     return 8;
   }
 
@@ -456,6 +454,56 @@ function armoryActionScore(game, team, teamId, key) {
   return 10;
 }
 
+/** Four-slot worker draft EV (slot + choice dict). */
+export function scoreArmoryWorkerPick(game, team, teamId, slot, choice) {
+  const hp = team.castleHp;
+  const max = team.castleMax;
+  const round = game.round;
+  const t = stashTotals(team);
+  const nextCal = nextRoundIsCalamity(round);
+
+  if (slot === "green" && choice?.heal) {
+    const heal = Math.min(choice.heal, max - hp);
+    if (heal <= 0) return -20;
+    const costG = 4 * 2.2 ** (heal - 1);
+    let s = heal * 22;
+    if (hp < max * 0.25) s += 50;
+    if (hp < max * 0.45) s += 30;
+    if (nextCal && hp < max * 0.65) s += 25;
+    return s - costG * 4;
+  }
+  if (slot === "red" && choice?.bench) {
+    const n = choice.bench;
+    if (team.reserve.length < n) return -20;
+    let s = 10 + n * 10;
+    if (team.reserve.length > 11) s += 12;
+    if (team.reserve.length < CALAMITY_PREP_MIN_RESERVE && nextCal) s -= 25;
+    const costR = 3 * 2.35 ** (n - 1);
+    return s - costR * 2.5;
+  }
+  if (slot === "yellow" && choice?.tier) {
+    if (choice.tier === "high") return round >= 5 && hp > max * 0.15 ? 58 : -15;
+    let s = 40;
+    if ((t.yellow || 0) < 6) s -= 20;
+    return s;
+  }
+  if (slot === "blue" && choice?.tier) {
+    if (choice.tier === "high") {
+      let s = round >= 5 ? 55 : -15;
+      if (hp < max * 0.5) s += 18;
+      if (nextCal) s += 22;
+      return s;
+    }
+    let s = 44;
+    if (hp < max * 0.5) s += 15;
+    if (nextCal) s += 20;
+    if ((t.blue || 0) < 8) s -= 25;
+    return s;
+  }
+
+  return -20;
+}
+
 function armoryCandidates(game, team, style) {
   const round = game.round;
   const nextCal = nextRoundIsCalamity(round);
@@ -466,10 +514,8 @@ function armoryCandidates(game, team, style) {
 
   if (hp < max * 0.5 && (t.green || 0) >= 3) list.push("repair");
   if (hp < max * 0.3 && (t.green || 0) >= 3) list.push("repair");
-  if (nextCal && team.reserve.length < CALAMITY_PREP_MIN_RESERVE && team.reserve.length >= 1) {
-    list.push("scrap_1");
-  }
-  if (team.reserve.length > 10 && (t.green || 0) >= 5) list.push("scrap_1");
+  if (team.reserve.length > 10 && (t.red || 0) >= 3) list.push("bench_1");
+  if (team.reserve.length > 12 && (t.red || 0) >= 7) list.push("bench_2");
 
   if (canAfford(team, ROUND_COSTS.boiling_oil) && (ROUND_MIN.boiling_oil || 1) <= round) {
     list.push("boiling_oil");
@@ -496,18 +542,19 @@ function armoryCandidates(game, team, style) {
   return [...new Set(list)];
 }
 
-function pickPermanentColor(team) {
+export function pickPermanentColor(team) {
   return dominantDeckColor(team);
 }
 
-function scrapReserveSmart(team, n) {
+function benchReserveSmart(team, n) {
   const sorted = [...team.reserve].sort((a, b) => a.tr - b.tr || a.mr - b.mr);
   for (let i = 0; i < n && sorted.length; i++) {
     const c = sorted.shift();
     const idx = team.reserve.findIndex((x) => x.id === c.id);
     if (idx >= 0) {
-      team.reserve.splice(idx, 1);
-      team.removedIds.add(c.id);
+      const card = team.reserve.splice(idx, 1)[0];
+      if (!team.benched) team.benched = [];
+      team.benched.push(card);
     }
   }
 }
@@ -517,7 +564,7 @@ export function runArmoryAI(game, teamId) {
   const style = game.armoryStyles[teamId];
   const rng = game.rng;
   let buys = 0;
-  let scrapBuys = 0;
+  let benchBuys = 0;
   const log = [];
   const totalStash = stashSum(team);
 
@@ -549,20 +596,20 @@ export function runArmoryAI(game, teamId) {
   const tryVisit = (key) => {
     const cost = VISIT_COSTS[key];
     if (!cost || buys >= BUYS_PER_ARMORY) return false;
-    if (key.startsWith("scrap") && scrapBuys >= 1) return false;
+    if (key.startsWith("bench") && benchBuys >= 1) return false;
     if (!canAfford(team, cost)) return false;
     if (key === "repair" && greenAfterPay(team, cost) < 0 && team.castleHp > team.castleMax * 0.6) {
       return false;
     }
-    if (key === "scrap_1" && team.reserve.length < 1) return false;
-    if (key === "scrap_2" && team.reserve.length < 2) return false;
+    if (key === "bench_1" && team.reserve.length < 1) return false;
+    if (key === "bench_2" && team.reserve.length < 2) return false;
     const paid = payStash(team, cost, game, teamId);
     if (!paid) return false;
     game.recycle.push(...recyclePaid(paid));
     if (key === "repair") team.castleHp = Math.min(team.castleMax, team.castleHp + 2);
-    else if (key === "scrap_1") scrapReserveSmart(team, 1);
-    else if (key === "scrap_2") scrapReserveSmart(team, 2);
-    if (key.startsWith("scrap")) scrapBuys++;
+    else if (key === "bench_1") benchReserveSmart(team, 1);
+    else if (key === "bench_2") benchReserveSmart(team, 2);
+    if (key.startsWith("bench")) benchBuys++;
     buys++;
     log.push(key);
     return true;
@@ -602,7 +649,7 @@ export function runArmoryAI(game, teamId) {
     if (!bestKey || bestScore < 5) break;
 
     let done = false;
-    if (bestKey === "repair" || bestKey.startsWith("scrap")) {
+    if (bestKey === "repair" || bestKey.startsWith("bench")) {
       done = tryVisit(bestKey);
     } else if (ROUND_COSTS[bestKey]) {
       done = tryRound(bestKey);

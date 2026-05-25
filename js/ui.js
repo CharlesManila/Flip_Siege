@@ -11,12 +11,20 @@ import {
   ROUND_MIN,
   SHOP_DURATION,
   SHOP_DURATION_LABEL,
+  ARMORY_SLOTS,
   VISIT_COSTS,
   VISIT_DESCRIPTIONS,
   VISIT_LABELS,
+  benchCost,
   canAfford,
+  isSlotOccupiedForPlayer,
+  legalFourSlotChoices,
+  repairCost,
   stashTotals,
+  yellowAttackTierCost,
+  blueDefenseTierCost,
 } from "./rules.js";
+import { armoryDraftPlayerId, humanArmoryDraftTurn } from "./armoryDraft.js";
 import { humanMustPlay, isCalamityLead } from "./game.js";
 import { canFollow } from "./rules.js";
 
@@ -338,7 +346,12 @@ function renderTrophyPicker(game, hooks) {
   const choices = document.getElementById("trophy-choices");
   if (!dlg || !choices || !game.pendingTrophy) return;
 
-  const { defender, eligible, block } = game.pendingTrophy;
+  if (game.pendingTrophy.mode !== "pick") {
+    dlg.close();
+    return;
+  }
+
+  const { defender, eligible, block, assault } = game.pendingTrophy;
   const humanDef = game.players.some((p) => p.human && p.teamId === defender);
   if (!humanDef) {
     dlg.close();
@@ -347,8 +360,9 @@ function renderTrophyPicker(game, hooks) {
 
   const prompt = document.getElementById("trophy-prompt");
   if (prompt) {
-    prompt.innerHTML = `Your team blocked with <strong>${block}</strong>. Each monster below contributed led-color Assault and has <strong>monster rank ≤ ${block}</strong>. 
-      Pick <strong>one</strong> trophy (Stash value = <strong>monster rank</strong>; tower rank matters when you defend with that color later).`;
+    prompt.innerHTML = `Several enemy monsters qualify, but your Block (<strong>${block}</strong>) is below resolved Assault (<strong>${assault}</strong>). 
+      Pick <strong>one</strong> trophy (each below: led-color Assault contributor with <strong>monster rank ≤ Block</strong>). 
+      Stash value = <strong>monster rank</strong>; tower rank matters when you defend with that color later.`;
   }
 
   choices.innerHTML = "";
@@ -394,20 +408,20 @@ function openTrophyDialog(dlg) {
   openModalDialog(dlg);
 }
 
-function renderScrapPicker(game, hooks) {
+function renderBenchPicker(game, hooks) {
   const dlg = document.getElementById("scrap-dialog");
   const choices = document.getElementById("scrap-choices");
   const confirmBtn = document.getElementById("btn-scrap-confirm");
-  if (!dlg || !choices || !game.pendingScrap) return;
+  if (!dlg || !choices || !game.pendingBench) return;
 
-  const { key, count, selected } = game.pendingScrap;
+  const { key, count, selected } = game.pendingBench;
   const team = game.teams[0];
   const cost = VISIT_COSTS[key];
   const prompt = document.getElementById("scrap-prompt");
   if (prompt) {
-    prompt.innerHTML = `Pay <strong>${escapeHtml(formatCost(cost))}</strong> to permanently remove 
+    prompt.innerHTML = `Pay <strong>${escapeHtml(formatCost(cost))}</strong> to <strong>bench</strong> 
       <strong>${count}</strong> card${count === 1 ? "" : "s"} from your <strong>reserve</strong> 
-      (${team.reserve.length} in reserve). Click to select, then confirm.`;
+      (${team.reserve.length} in reserve). They <strong>skip the next deal only</strong>, then return to reserve top. Click to select, then confirm.`;
   }
 
   const updateConfirm = () => {
@@ -415,7 +429,7 @@ function renderScrapPicker(game, hooks) {
       confirmBtn.disabled = selected.size !== count;
       confirmBtn.textContent =
         selected.size === count
-          ? `Confirm scrap (${count})`
+          ? `Confirm bench (${count})`
           : `Select ${count - selected.size} more`;
     }
   };
@@ -449,8 +463,8 @@ function renderScrapPicker(game, hooks) {
   if (confirmBtn) {
     confirmBtn.onclick = () => {
       if (selected.size !== count) return;
-      if (hooks.onScrapConfirm?.(key, [...selected])) {
-        game.pendingScrap = null;
+      if (hooks.onBenchConfirm?.(key, [...selected])) {
+        game.pendingBench = null;
         dlg.close();
       }
     };
@@ -459,9 +473,9 @@ function renderScrapPicker(game, hooks) {
   const cancelBtn = document.getElementById("btn-scrap-cancel");
   if (cancelBtn) {
     cancelBtn.onclick = () => {
-      game.pendingScrap = null;
+      game.pendingBench = null;
       dlg.close();
-      hooks.onScrapCancel?.();
+      hooks.onBenchCancel?.();
     };
   }
 
@@ -481,7 +495,7 @@ export function renderBoard(game, hooks) {
   const trophyDlg = document.getElementById("trophy-dialog");
   if (game.phase !== "trophy_pick" && trophyDlg?.open) trophyDlg.close();
   const scrapDlg = document.getElementById("scrap-dialog");
-  if (!game.pendingScrap && scrapDlg?.open) scrapDlg.close();
+  if (!game.pendingBench && scrapDlg?.open) scrapDlg.close();
 
   $("#round-label").textContent = `Round ${game.round}`;
   $("#siege-label").textContent =
@@ -538,9 +552,10 @@ export function renderBoard(game, hooks) {
     .join("");
   logEl.scrollTop = logEl.scrollHeight;
 
-  if (game.phase === "trophy_pick") {
+  if (game.phase === "trophy_pick" && game.pendingTrophy?.mode === "pick") {
     renderTrophyPicker(game, hooks);
-    $("#prompt").textContent = "Choose a trophy from the eligible enemy monsters.";
+    $("#prompt").textContent =
+      "Block < Assault — pick one qualifying trophy from the dialog.";
     $("#armory-panel").classList.add("hidden");
     $("#btn-end-armory").classList.add("hidden");
     return;
@@ -572,13 +587,16 @@ export function renderBoard(game, hooks) {
     $("#btn-end-armory").classList.add("hidden");
     $("#btn-play-again")?.classList.remove("hidden");
   } else if (game.phase === "armory") {
-    if (game.pendingScrap) {
-      prompt.textContent = `Choose ${game.pendingScrap.count} reserve card(s) to scrap.`;
-      renderScrapPicker(game, hooks);
+    if (game.pendingBench) {
+      prompt.textContent = `Choose ${game.pendingBench.count} reserve card(s) to bench.`;
+      renderBenchPicker(game, hooks);
+      $("#armory-panel").classList.remove("hidden");
+    } else if (game.subphase === "armory_draft") {
+      renderArmoryDraft(game, hooks);
     } else {
-      prompt.textContent = `Armory — ${game.humanBuysLeft} purchase(s) left. Enemies already shopped.`;
+      prompt.textContent = `Armory — ${game.humanBuysLeft} purchase(s) left.`;
+      renderArmory(game, hooks);
     }
-    renderArmory(game, hooks);
   } else if (humanMustPlay(game)) {
     const p = game.players.find((x) => x.human);
     const siege = p.teamId === game.siegerTeam;
@@ -591,21 +609,178 @@ export function renderBoard(game, hooks) {
     $("#armory-panel").classList.add("hidden");
   }
 
-  $("#btn-end-armory").classList.toggle("hidden", game.phase !== "armory");
+  $("#btn-end-armory").classList.toggle(
+    "hidden",
+    game.phase !== "armory" || game.subphase === "armory_draft",
+  );
   $("#btn-play-again")?.classList.toggle("hidden", game.phase !== "gameover");
+}
+
+const SLOT_META = {
+  green: { title: "Green — Repair", color: "green" },
+  yellow: { title: "Yellow — Attack", color: "yellow" },
+  blue: { title: "Blue — Defense", color: "blue" },
+  red: { title: "Red — Bench", color: "red" },
+};
+
+function renderArmoryDraft(game, hooks) {
+  const panel = $("#armory-panel");
+  const board = $("#armory-draft-board");
+  const choicesEl = $("#armory-slot-choices");
+  const shop = $("#armory-shop");
+  if (!panel || !board) return;
+  panel.classList.remove("hidden");
+  shop.innerHTML = "";
+  shop.classList.add("hidden");
+  board.classList.remove("hidden");
+
+  const pid = armoryDraftPlayerId(game);
+  const player = pid != null ? game.players[pid] : null;
+  const human = humanArmoryDraftTurn(game);
+  const team = human ? game.teams[human.teamId] : game.teams[0];
+
+  const summary = $("#armory-summary");
+  if (summary) {
+    const order = game.armoryDraft.pickOrder
+      .map((id, i) => {
+        const p = game.players[id];
+        const mark = i === game.armoryDraft.pickIndex ? " ◀" : i < game.armoryDraft.pickIndex ? " ✓" : "";
+        return `${p.name}${mark}`;
+      })
+      .join(" → ");
+    summary.innerHTML = `Worker draft: <strong>${order}</strong> (same order as trick 1 next round).`;
+  }
+
+  const prompt = $("#prompt");
+  if (prompt) {
+    if (human) {
+      prompt.textContent = `Your worker pick (${human.name}). Place on a station or Pass. Cannot revisit your last station.`;
+    } else if (player) {
+      prompt.textContent = `Waiting — ${player.name} is picking…`;
+    } else {
+      prompt.textContent = "Armory draft finishing…";
+    }
+  }
+
+  board.innerHTML = "";
+  const grid = document.createElement("div");
+  grid.className = "armory-stations-grid";
+
+  for (const slot of ARMORY_SLOTS) {
+    const meta = SLOT_META[slot];
+    const cell = document.createElement("div");
+    cell.className = `armory-station station-${slot}`;
+    const occupant = game.players.find((p) => p.workerSlot === slot);
+    let occText = "Open";
+    if (occupant) {
+      occText =
+        occupant.teamId === 0
+          ? `${occupant.name} (your team)`
+          : `${occupant.name} (enemies)`;
+    }
+    const blocked =
+      human &&
+      (human.lastWorkerSlot === slot || isSlotOccupiedForPlayer(game, slot, human));
+    cell.innerHTML = `
+      <h4 class="station-title">${escapeHtml(meta.title)}</h4>
+      <p class="station-occupant">${escapeHtml(occText)}</p>`;
+    if (human && !blocked) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `station-pick color-${slot}`;
+      btn.textContent = "Place worker";
+      btn.onclick = () => showSlotChoices(game, hooks, slot, human);
+      cell.appendChild(btn);
+    }
+    grid.appendChild(cell);
+  }
+  board.appendChild(grid);
+
+  if (choicesEl) {
+    choicesEl.classList.add("hidden");
+    choicesEl.innerHTML = "";
+  }
+
+  if (human) {
+    const passRow = document.createElement("div");
+    passRow.className = "armory-draft-pass-row";
+    const passBtn = document.createElement("button");
+    passBtn.type = "button";
+    passBtn.className = "btn-secondary";
+    passBtn.textContent = "Pass (no purchase)";
+    passBtn.onclick = () => hooks.onArmoryPass?.();
+    passRow.appendChild(passBtn);
+    board.appendChild(passRow);
+  }
+
+  panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function showSlotChoices(game, hooks, slot, player) {
+  const choicesEl = $("#armory-slot-choices");
+  if (!choicesEl) return;
+  const team = game.teams[player.teamId];
+  const legal = legalFourSlotChoices(game, team, slot);
+  choicesEl.classList.remove("hidden");
+  choicesEl.innerHTML = `<h4>${escapeHtml(SLOT_META[slot].title)} — choose</h4>`;
+  const grid = document.createElement("div");
+  grid.className = "armory-choice-grid";
+
+  for (const choice of legal) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "armory-choice-btn";
+    let label = "";
+    let cost = {};
+    if (slot === "green" && choice.heal) {
+      label = `Repair +${choice.heal} HP`;
+      cost = repairCost(choice.heal);
+    } else if (slot === "red" && choice.bench) {
+      label = `Bench ${choice.bench} card(s)`;
+      cost = benchCost(choice.bench);
+    } else if (slot === "yellow" && choice.tier) {
+      label = choice.tier === "high" ? "Siege Breaker" : "War Drums";
+      cost = yellowAttackTierCost(choice.tier, game.round);
+    } else if (slot === "blue" && choice.tier) {
+      label = choice.tier === "high" ? "Iron Curtain" : "Boiling Oil";
+      cost = blueDefenseTierCost(choice.tier, game.round);
+    }
+    btn.innerHTML = `<span>${escapeHtml(label)}</span><span class="shop-item-cost">${escapeHtml(formatCost(cost))}</span>`;
+    btn.onclick = () => {
+      const r = hooks.onArmoryWorker?.(slot, choice);
+      if (r?.needsBenchPick) {
+        choicesEl.classList.add("hidden");
+        render();
+      } else if (r?.ok) {
+        choicesEl.classList.add("hidden");
+      } else if (r?.msg) alert(r.msg);
+    };
+    grid.appendChild(btn);
+  }
+
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "btn-secondary";
+  cancel.textContent = "Back";
+  cancel.onclick = () => choicesEl.classList.add("hidden");
+  choicesEl.appendChild(grid);
+  choicesEl.appendChild(cancel);
 }
 
 function renderArmory(game, hooks) {
   const panel = $("#armory-panel");
   panel.classList.remove("hidden");
+  $("#armory-draft-board")?.classList.add("hidden");
+  $("#armory-slot-choices")?.classList.add("hidden");
   const shop = $("#armory-shop");
+  shop.classList.remove("hidden");
   shop.innerHTML = "";
   const team = game.teams[0];
   const buysLeft = game.humanBuysLeft;
 
   const summary = $("#armory-summary");
   if (summary) {
-    summary.textContent = `${buysLeft} purchase${buysLeft === 1 ? "" : "s"} left this visit. Each buy uses one slot (a Permanent counts as one full buy). Max one Scrap per visit.`;
+    summary.textContent = `${buysLeft} purchase${buysLeft === 1 ? "" : "s"} left this visit. Each buy uses one slot (a Permanent counts as one full buy). Max one Bench per visit.`;
   }
 
   const permColorSection = $("#perm-color-section");
@@ -659,7 +834,7 @@ function renderArmory(game, hooks) {
   );
   for (const [k, cost] of Object.entries(VISIT_COSTS)) {
     let ok = canAfford(team, cost) && buysLeft > 0;
-    if (k.startsWith("scrap") && game.humanScrapBuys >= 1) ok = false;
+    if (k.startsWith("bench") && game.humanBenchBuys >= 1) ok = false;
     addItem(visitGrid, k, VISIT_LABELS[k] || k, cost, ok, VISIT_DESCRIPTIONS[k]);
   }
 

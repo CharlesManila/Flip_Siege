@@ -270,7 +270,7 @@
       <li>Agree <strong>follow rule</strong>: must-follow (standard) or may-follow (variant).</li>
       <li>Agree <strong>Stash mode</strong>: <strong>Recycle</strong> (default) or Destroy (variant).</li>
       <li><strong>Card cooldown</strong> is standard in v0.4 (played cards rest next deal, max 10 per team — §6.2).</li>
-      <li><strong>Trophy choice:</strong> if several monsters qualify, defending team picks one (see §11).</li>
+      <li><strong>Trophies:</strong> auto if one qualifies or Block ≥ Assault; else pick one (see §11).</li>
       <li>Choose first sieging team (coin flip). <strong>Round = 1.</strong></li>
       <li>Deal round 1 hands (see deal table in §6).</li>
     </ol>
@@ -312,9 +312,9 @@
       <div class="zones">
         <div class="zone deck"><strong>Deck (40)</strong> All cards you own this match. Never runs out — cards move between zones.</div>
         <div class="zone"><strong>Hand</strong> Dealt this round. Secret.</div>
-        <div class="zone"><strong>Reserve</strong> Undealt pile this round (face-down). Used for blind lead &amp; Scrap.</div>
+        <div class="zone"><strong>Reserve</strong> Undealt pile this round (face-down). Used for calamity flip &amp; Bench.</div>
         <div class="zone stash"><strong>Stash</strong> Off-color plays + trophies (face-up). Locked — not dealt until spent.</div>
-        <div class="zone removed"><strong>Removed</strong> Scrapped, Purged, or Destroy-paid. Never dealt again.</div>
+        <div class="zone removed"><strong>Removed</strong> Purged or Destroy-paid trophies. Never dealt again (Bench is <em>not</em> removed).</div>
         <div class="zone"><strong>Resting</strong> Played last round — skip <strong>next deal only</strong> (max 10 per team), then return to pool.</div>
         <div class="zone"><strong>Table trick</strong> 4 cards played, then resolved.</div>
       </div>
@@ -385,19 +385,20 @@
       <div class="trick-flow">
         <span class="trick-step">① Leader (siege) plays monster-up</span>
         <span class="trick-arrow">→</span>
-        <span class="trick-step">② Siege partner plays</span>
+        <span class="trick-step">② Defender A tower-up</span>
         <span class="trick-arrow">→</span>
-        <span class="trick-step">③ Defender A tower-up</span>
+        <span class="trick-step">③ Siege partner monster-up</span>
         <span class="trick-arrow">→</span>
         <span class="trick-step">④ Defender B tower-up</span>
       </div>
-      <figcaption>Play order. Leader sets <strong>led color</strong> from their monster.</figcaption>
+      <figcaption>Play order — <strong>teams alternate</strong> each card. Leader sets <strong>led color</strong>.</figcaption>
     </figure>
     <ol>
-      <li><strong>Sieging team</strong> = alternates each trick (odd trick: team that sieges first this round; even trick: other team).</li>
-      <li><strong>Leader</strong> (from sieging team; partners alternate each trick) plays <strong>monster-up</strong>. Led color = that monster’s color.</li>
+      <li><strong>Sieging team</strong> alternates each trick (odd trick: team that sieges first this round; even trick: other team).</li>
+      <li><strong>Leader</strong> (sieging team; partners alternate who leads) plays <strong>monster-up</strong>. Led color = that monster’s color.</li>
+      <li><strong>Defender A</strong> plays tower-up.</li>
       <li><strong>Siege partner</strong> plays monster-up.</li>
-      <li>Each <strong>defender</strong> plays tower-up.</li>
+      <li><strong>Defender B</strong> plays tower-up.</li>
       <li>Resolve Assault, Block, damage, Stash (§10), trophies (§11) — except on <strong>calamity</strong> (§14).</li>
       <li>Check round end / game end (§15).</li>
     </ol>
@@ -455,7 +456,7 @@
     <table>
       <thead><tr><th>Tier</th><th>Pay with</th><th>Examples</th></tr></thead>
       <tbody>
-        <tr><td>Visit (instant)</td><td><strong>Green</strong> value</td><td>Repair 3G · Scrap 1 = 3G · Scrap 2 = 5G</td></tr>
+        <tr><td>Visit (instant)</td><td><strong>Green</strong> / <strong>Red</strong></td><td>Repair 3G · Bench 1 = 3R · Bench 2 = 7R</td></tr>
         <tr><td>Round (next round)</td><td><strong>Blue</strong> value</td><td>War Drums 10B · Boiling Oil 10B · March Tax 12B · Sally Gate 10B</td></tr>
         <tr><td>Finishers</td><td><strong>Blue</strong> (round 5+ buy)</td><td>Siege Breaker 14B · Iron Curtain 14B</td></tr>
         <tr><td>Permanent (once)</td><td><strong>All four colors</strong></td><td>See §13 (unlock round 4 Armory)</td></tr>
@@ -467,9 +468,15 @@
     <p>After resolving damage, check trophies:</p>
     <ol>
       <li>Look at enemy <strong>siege monsters</strong> that contributed <strong>led-color Assault &gt; 0</strong>.</li>
-      <li>If your team’s <strong>Block ≥ that monster’s rank</strong> (printed monster rank on the card), you may take <strong>one</strong> of those monsters as a trophy.</li>
-      <li><strong>Defending team chooses</strong> which qualifying monster — not automatic highest/lowest. You might take a <strong>lower monster rank</strong> if its <strong>tower rank</strong> is better (stronger wall when that color is led on defense). Stash payment value is still the card’s <strong>monster rank</strong>.</li>
-      <li>Put it in your Stash (monster-up). It is <strong>borrowed</strong>: enemy cannot deal it while it sits in your Stash.</li>
+      <li>If your team’s <strong>Block ≥ that monster’s rank</strong> (printed monster rank on the card), that monster is <strong>eligible</strong>.</li>
+      <li><strong>How many you take:</strong>
+        <ul>
+          <li><strong>One eligible</strong> → take it automatically.</li>
+          <li><strong>Several eligible</strong> and your team’s <strong>Block ≥ resolved Assault</strong> (after buffs, before damage) → take <strong>all</strong> eligible monsters.</li>
+          <li><strong>Several eligible</strong> but <strong>Block &lt; Assault</strong> → defending team <strong>picks one</strong> (not automatic highest/lowest — you might take a lower monster rank for a better tower rank). Stash payment value is still each card’s <strong>monster rank</strong>.</li>
+        </ul>
+      </li>
+      <li>Put each trophy in your Stash (monster-up). Each is <strong>borrowed</strong>: enemy cannot deal it while it sits in your Stash.</li>
     </ol>
     <p><strong>When you spend a trophy:</strong> Recycle → returns to enemy deck. Destroy mode → removed from match.</p>
     <div class="callout warn">
@@ -477,13 +484,22 @@
     </div>
 
     <!-- ========== ARMORY ========== -->
-    <h2 id="armory">12. Armory</h2>
-    <p>After each round, <strong>each team gets 2 purchases</strong>. A Permanent counts as <strong>one full purchase</strong>. Max <strong>one Scrap</strong> purchase per visit (Scrap 1 <em>or</em> Scrap 2).</p>
+    <h2 id="armory">12. Armory (worker draft)</h2>
+    <p>After each round, run a <strong>worker draft</strong>: four players pick in <strong>trick-1 order</strong> for the upcoming round (siege lead → defender → siege partner → defender). Each pick: place a worker on one color station and buy, or <strong>pass</strong> (worker leaves the board).</p>
+    <ul>
+      <li><strong>Green</strong> — repair (scaled green cost, choose HP healed).</li>
+      <li><strong>Yellow</strong> — War Drums or Siege Breaker (round 5+).</li>
+      <li><strong>Blue</strong> — Boiling Oil or Iron Curtain (round 5+). <strong>One blue worker globally</strong> per draft.</li>
+      <li><strong>Red</strong> — bench 1–3 reserve cards (skip next deal). <strong>One red worker globally</strong> per draft.</li>
+      <li>Cannot return to the <strong>same station</strong> you just left on your previous pick.</li>
+      <li>Max <strong>one bench action per team</strong> per Armory.</li>
+      <li><strong>Permanent</strong> (round 4+): may be bought instead of a station pick when eligible (one per team per game).</li>
+    </ul>
     <h3>Unlock schedule</h3>
     <table>
       <thead><tr><th>When</th><th>Unlocks</th></tr></thead>
       <tbody>
-        <tr><td>Any Armory</td><td>Repair, Scrap, War Drums, Boiling Oil, March Tax, Sally Gate</td></tr>
+        <tr><td>Any Armory</td><td>Repair, Bench, War Drums, Boiling Oil, March Tax, Sally Gate</td></tr>
         <tr><td><strong>Round 4 Armory</strong></td><td><strong>Permanents</strong> (one per team per game)</td></tr>
         <tr><td><strong>Round 5 Armory</strong></td><td><strong>Siege Breaker</strong>, <strong>Iron Curtain</strong></td></tr>
       </tbody>
@@ -493,11 +509,11 @@
       <thead><tr><th>Item</th><th>Cost</th><th>Effect</th></tr></thead>
       <tbody>
         <tr><td>Repair</td><td>3 green</td><td>+2 castle HP now (max = start HP)</td></tr>
-        <tr><td>Scrap 1</td><td>3 green</td><td>Remove 1 card from your <strong>reserve</strong> permanently</td></tr>
-        <tr><td>Scrap 2</td><td>5 green</td><td>Remove 2 cards from reserve permanently</td></tr>
+        <tr><td>Bench 1</td><td>3 red</td><td>Bench 1 card from <strong>reserve</strong> — skips <strong>next deal only</strong>, then returns to reserve top</td></tr>
+        <tr><td>Bench 2</td><td>7 red</td><td>Bench 2 cards from reserve (same return rule)</td></tr>
       </tbody>
     </table>
-    <p><strong>Scrap:</strong> Illegal if reserve has fewer cards than you need. Cannot Scrap from hand or Stash.</p>
+    <p><strong>Bench:</strong> Benched cards are not in hand, reserve, or the deal pool for that one round (like a short cooldown). After that deal, they return to the <strong>top</strong> of reserve. Card count unchanged. Illegal if reserve has fewer cards than you need. Cannot Bench from hand or Stash.</p>
     <h3>Round items (blue — active next round only)</h3>
     <table>
       <thead><tr><th>Item</th><th>Cost</th><th>Effect</th></tr></thead>
@@ -553,6 +569,7 @@
     </ol>
     <h3>Defense (both teams)</h3>
     <p>Each team defends like a normal trick: <strong>every player plays one card tower-up</strong> (must-follow led color if you can; off-color → Stash). <strong>No trophies.</strong> Assault = <strong>sum of both flipped monster ranks</strong> (no round trim on that total). Each castle takes damage = <strong>Assault + underprep penalty − that team’s Block</strong> (min 0).</p>
+    <p>After calamity resolves, the two flipped reserve monsters are <strong>not played</strong> — return them to the <strong>top</strong> of the same reserves. They do <strong>not</strong> enter card cooldown (only tower cards played from hand do).</p>
     <h3>Reserve prep</h3>
     <ul>
       <li><strong>Prepared:</strong> After those flips, your reserve still has <strong>≥9 cards</strong> → bonus Block (+1 per card above 8, cap +7) plus add <strong>⅓</strong> of the best <strong>tower rank</strong> among your top 3 reserve cards.</li>
@@ -574,17 +591,17 @@
       <li><strong>Deck exhaustion (optional):</strong> From round 5+, if any player has <strong>≤ half</strong> the round’s deal size in hand after a trick (e.g. ≤5 when deal is 11), the game ends — <strong>highest castle HP wins</strong>. Default tournament rules often <strong>skip</strong> this.</li>
     </ul>
     <h3>Short deal</h3>
-    <p>If the living pool cannot fill all hands (common with <strong>cooldown</strong>, Stash lock, and Scrap), deal as many cards as possible from what exists. <strong>No reshuffle</strong> of Stash, removed, or resting cards into the deal. Some players may get fewer cards or zero.</p>
+    <p>If the living pool cannot fill all hands (common with <strong>cooldown</strong>, Stash lock, and benched cards), deal as many cards as possible from what exists. <strong>No reshuffle</strong> of Stash, removed, or resting cards into the deal. Some players may get fewer cards or zero.</p>
 
     <!-- ========== FAQ ========== -->
     <h2 id="faq">16. FAQ &amp; edge cases</h2>
     <dl class="faq">
       <dt>Can I buy Repair and a Permanent in the same Armory?</dt>
       <dd>Yes, if you have 2 purchases. Permanent uses one.</dd>
-      <dt>Can I buy Scrap 1 and Scrap 2 same visit?</dt>
-      <dd>No. Max one Scrap purchase per visit.</dd>
-      <dt>What if I want to Scrap but reserve is empty?</dt>
-      <dd>You cannot buy Scrap. The purchase is illegal.</dd>
+      <dt>Can I buy Bench 1 and Bench 2 same visit?</dt>
+      <dd>No. Max one Bench purchase per visit.</dd>
+      <dt>What if I want to Bench but reserve is empty?</dt>
+      <dd>You cannot buy Bench. The purchase is illegal.</dd>
       <dt>Does Purge remove cards in my Stash?</dt>
       <dd>Yes — all 10 of that color leave the game when Purge resolves (pay the cost first).</dd>
       <dt>Can the enemy deal a card I have as a trophy?</dt>
@@ -650,10 +667,10 @@
       <div class="ref-card">
         <h3>Stash pay</h3>
         <ul style="margin:0;padding-left:1.1rem">
-          <li>Green: Repair 3 · Scrap 3/5</li>
+          <li>Green: Repair 3 · Red: Bench 3 / 7</li>
           <li>Blue: Drums/Oil 10 · Tax 12</li>
           <li>Gate 10 · Breaker/Curtain 14</li>
-          <li>Overpay lost · 1 Scrap max/visit</li>
+          <li>Overpay lost · 1 Bench max/visit</li>
         </ul>
       </div>
     </div>
