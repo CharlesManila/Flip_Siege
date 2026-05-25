@@ -5,6 +5,11 @@ on:
   push:
     branches: [main, master]
   workflow_dispatch:
+    inputs:
+      supabase_anon_key:
+        description: "Paste Supabase anon public key (Settings → API)"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -40,7 +45,7 @@ jobs:
       - name: Configure Supabase play logging
         env:
           SUPABASE_URL: https://wfjmrtogzfpkinivjipr.supabase.co
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_ANON_KEY: ${{ inputs.supabase_anon_key || secrets.SUPABASE_ANON_KEY }}
         run: bash scripts/write-play-log-config.sh
 
       - uses: actions/configure-pages@v5
