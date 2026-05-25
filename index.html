@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Flip-Siege — Play vs AI</title>
+    <link rel="stylesheet" href="css/game.css" />
+  </head>
+  <body>
+    <div id="file-warning" class="file-warning hidden" role="alert"></div>
+    <section id="screen-setup">
+      <h1>Flip-Siege</h1>
+      <p class="small-note">
+        You + ally AI vs two enemy AIs. Official rules — Stash, card cooldown, ~50% games end round 4 / ~50% round 5+.
+      </p>
+      <div class="setup-options">
+        <strong>Follow rule</strong>
+        <label><input type="radio" name="follow" value="must" checked /> Must-follow (60 HP)</label>
+        <label><input type="radio" name="follow" value="may" /> May-follow variant (68 HP)</label>
+      </div>
+      <p class="small-note">
+        <strong>Card cooldown (official):</strong> cards played to tricks rest next deal (up to 10 per team), then return.
+      </p>
+      <p class="small-note">
+        Siege with monsters face-up, defend with towers. Off-color → Stash. 2 Armory buys per round.
+      </p>
+      <p class="small-note">
+        <a href="rules/rulebook.html" target="_blank" rel="noopener">Full rulebook (print-friendly)</a>
+      </p>
+      <button type="button" id="btn-start">Start battle</button>
+      <button type="button" id="btn-rules" class="btn-secondary">Quick rules</button>
+    </section>
+
+    <section id="screen-game" class="hidden">
+      <div class="top-bar">
+        <div>
+          <span id="round-label">Round 1</span> · <span id="siege-label">—</span>
+        </div>
+        <div id="prompt">—</div>
+        <button type="button" id="btn-play-again" class="hidden">Play again</button>
+        <button type="button" id="btn-new">Menu</button>
+      </div>
+
+      <div id="board">
+        <div id="castles"></div>
+        <div id="trick-center" class="trick-center" aria-live="polite"></div>
+        <div id="players"></div>
+        <div id="armory-panel" class="hidden">
+          <h3>Armory</h3>
+          <p id="armory-summary" class="armory-summary"></p>
+          <div id="perm-color-section" class="armory-section perm-color-section hidden">
+            <h4 class="armory-section-title">Permanent color</h4>
+            <p class="armory-hint">
+              Pick the color tied to a <strong>Permanent</strong> before you buy one. Bonuses apply to that color’s cards when it is led.
+              <strong>Great Purge</strong> removes that entire color from your deck.
+            </p>
+            <label id="perm-color-wrap">
+              Color:
+              <select id="perm-color" aria-describedby="perm-color-hint">
+                <option value="green">Green</option>
+                <option value="blue">Blue</option>
+                <option value="red">Red</option>
+                <option value="yellow">Yellow</option>
+              </select>
+            </label>
+          </div>
+          <div id="armory-shop"></div>
+          <button type="button" id="btn-end-armory" class="hidden">Done shopping → next round</button>
+        </div>
+        <div id="log"></div>
+      </div>
+    </section>
+
+    <dialog id="scrap-dialog" class="scrap-dialog">
+      <h2>Scrap from reserve</h2>
+      <p id="scrap-prompt" class="scrap-prompt">
+        Choose card(s) to remove permanently from your team reserve.
+      </p>
+      <div id="scrap-choices" class="scrap-choices"></div>
+      <div class="scrap-dialog-actions">
+        <button type="button" id="btn-scrap-cancel" class="btn-secondary">Cancel</button>
+        <button type="button" id="btn-scrap-confirm" disabled>Confirm scrap</button>
+      </div>
+    </dialog>
+
+    <dialog id="trophy-dialog" class="trophy-dialog">
+      <h2>Choose a trophy</h2>
+      <p id="trophy-prompt" class="trophy-prompt">
+        Your Block covered these enemy siege monsters. Pick <strong>one</strong> for your Stash (value = monster rank).
+      </p>
+      <div id="trophy-choices" class="trophy-choices"></div>
+    </dialog>
+
+    <dialog id="rules-dialog" class="rules-dialog">
+      <h2>Quick rules</h2>
+      <p><a href="rules/rulebook.html" target="_blank">Open full rulebook</a> for every edge case.</p>
+      <ul>
+        <li><strong>Goal:</strong> enemy castle 0 HP (any round).</li>
+        <li><strong>Trick:</strong> siege plays monsters, defense plays towers. Led color = lead monster color.</li>
+        <li><strong>Follow:</strong> play led color if you can (may-follow @ 68 HP). Siege alternates each trick; calamity rounds 2 &amp; 4.</li>
+        <li><strong>Calamity:</strong> last trick flips two reserve monsters (ranks add to Assault); both teams tower-up — you choose your defense card.</li>
+        <li><strong>Damage:</strong> Assault − Block. Off-color → Stash (rank = value).</li>
+        <li><strong>Round ends:</strong> anyone at 1 card, or max tricks → Armory (2 buys).</li>
+        <li><strong>Cooldown:</strong> played cards skip next deal (max 10 resting per team).</li>
+        <li><strong>Armory:</strong> green = instant · blue = next round · Permanent = game (round 4+).</li>
+        <li><strong>Permanent color:</strong> pick before buying; ties Sigil/Mastery/etc. to that color.</li>
+      </ul>
+      <button type="button" id="btn-close-rules">Close</button>
+    </dialog>
+
+    <script>
+      (function () {
+        if (location.protocol === "file:") {
+          const w = document.getElementById("file-warning");
+          w.classList.remove("hidden");
+          w.innerHTML =
+            "<strong>Cannot run from a file link.</strong> ES modules need a local server. " +
+            "In a terminal: <code>cd themes/flip-siege/play</code> then <code>python -m http.server 8080</code> " +
+            "and open <a href='http://localhost:8080/'>http://localhost:8080/</a>. " +
+            "Or double-click <code>START.bat</code> in this folder.";
+        }
+      })();
+    </script>
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

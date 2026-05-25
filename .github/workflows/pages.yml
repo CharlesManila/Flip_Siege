@@ -1,0 +1,45 @@
+# Deploy play/ to GitHub Pages (free). Repo root must be this play folder.
+name: Deploy Flip-Siege Play
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync rulebook from monorepo layout (if present)
+        run: |
+          if [ -f ../rules/rulebook.html ]; then
+            cp -f ../rules/rulebook.html rules/rulebook.html
+            echo "Synced from ../rules/rulebook.html"
+          elif [ -f ../../rules/rulebook.html ]; then
+            cp -f ../../rules/rulebook.html rules/rulebook.html
+            echo "Synced from ../../rules/rulebook.html"
+          else
+            test -f rules/rulebook.html || (echo "Missing rules/rulebook.html" && exit 1)
+            echo "Using committed play/rules/rulebook.html"
+          fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4

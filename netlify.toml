@@ -1,0 +1,9 @@
+# Optional: deploy play/ folder on Netlify (free tier).
+[build]
+  publish = "."
+  command = "bash scripts/sync-rulebook.sh || true"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"

@@ -1,0 +1,9 @@
+{
+  "name": "flip-siege-play",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync:rules": "powershell -ExecutionPolicy Bypass -File scripts/sync-rulebook.ps1",
+    "serve": "python -m http.server 8080"
+  }
+}
