@@ -227,19 +227,33 @@ export function dealRound(game) {
     t.activeBuffs = new Set(t.pendingBuffs);
     t.pendingBuffs = new Set();
     t.sallyGate = t.activeBuffs.has("sally_gate");
+    const plys = teamPlayers(game, t.id);
+    const needed = hs * plys.length;
     let pool = livingPool(t, game.cooldownMechanic);
-    if (t.skipBlueDeal) {
+    if (t.skipColorsDeal?.size) {
+      pool = pool.filter((c) => !t.skipColorsDeal.has(c.color));
+      t.skipColorsDeal.clear();
+    } else if (t.skipBlueDeal) {
       pool = pool.filter((c) => c.color !== "blue");
       t.skipBlueDeal = false;
     }
     pool = shuffle(pool, game.rng);
     const resting = game.cooldownMechanic ? t.cooldownIds?.size ?? 0 : 0;
-    const dealt = pool.slice(0, need);
-    t.reserve = pool.slice(need);
-    let idx = 0;
-    for (const p of plys) {
-      p.hand = dealt.slice(idx, idx + hs);
-      idx += hs;
+    const dealt = pool.slice(0, Math.min(pool.length, needed));
+    t.reserve = pool.slice(dealt.length);
+    if (dealt.length >= needed) {
+      let idx = 0;
+      for (const p of plys) {
+        p.hand = dealt.slice(idx, idx + hs);
+        idx += hs;
+      }
+    } else {
+      let idx = 0;
+      for (const p of plys) {
+        const n = Math.min(hs, Math.max(0, dealt.length - idx));
+        p.hand = dealt.slice(idx, idx + n);
+        idx += n;
+      }
     }
     t.marchTax = t.activeBuffs.has("march_tax");
     if (resting > 0) {
