@@ -762,6 +762,7 @@ function showSlotChoices(game, hooks, slot, player) {
       label = choice.tier === "high" ? "Iron Curtain" : "Boiling Oil";
       cost = blueDefenseTierCost(choice.tier, game.round);
       desc = choice.tier === "high" ? "+9 Block on first defense trick (next round)." : "+2 Block on first defense trick (next round).";
+    }
     btn.innerHTML = `<span>${escapeHtml(label)}</span><span class="shop-item-cost">${escapeHtml(formatCost(cost))}</span>${desc ? `<small class="armory-choice-desc">${escapeHtml(desc)}</small>` : ""}`;
     btn.onclick = () => {
       const r = hooks.onArmoryWorker?.(slot, choice);
