@@ -72,11 +72,16 @@ function scheduleAI() {
 function tick() {
   if (!game || game.phase === "gameover") return;
   if (game.phase === "calamity_reveal") {
-    if (game.calamityReveal?.step === "defend" && !humanMustPlay(game)) {
+    const step = game.calamityReveal?.step;
+    if (step === "defend" && !humanMustPlay(game)) {
       advanceAI(game);
     }
     render();
-    if (game.phase === "calamity_reveal" && game.calamityReveal?.step === "defend" && !humanMustPlay(game)) {
+    if (
+      game.phase === "calamity_reveal" &&
+      game.calamityReveal?.step === "defend" &&
+      !humanMustPlay(game)
+    ) {
       scheduleAI();
     }
     return;

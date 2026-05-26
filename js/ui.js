@@ -241,7 +241,7 @@ function renderCalamityCenter(game, hooks) {
         );
         const tag = document.createElement("span");
         tag.className = off ? "off-color-tag" : "block-contrib-tag";
-        tag.textContent = off ? "→ Stash" : `+${d.contrib} block`;
+        tag.textContent = off ? "→ resources" : `+${d.contrib} block`;
         cardWrap.appendChild(tag);
         slot.appendChild(cardWrap);
         cards.appendChild(slot);

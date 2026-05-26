@@ -653,7 +653,8 @@ function finishCalamityPlays(game) {
       const team = game.teams[player.teamId];
       let val = stashValue(card, false);
       if (team.marchTax) val += 1;
-      addStash(team, card, val, "off_color", game, player.teamId);
+      const gain = offColorResourceGain(val);
+      if (gain > 0) addResources(team, card.color, gain, "off_color");
     }
   }
   game.calamityReveal.teamResults = teamResults;
@@ -687,7 +688,12 @@ function finishCalamityRound(game) {
 /** Play defense cards during calamity (tower-up). */
 function advanceCalamityDefense(game, singleStep = false) {
   const led = game.calamityReveal.led;
-  while (game.trickStep < game.trickOrder.length) {
+  const orderLen = game.trickOrder.length;
+  if (game.trickPlays.length >= orderLen) {
+    finishCalamityPlays(game);
+    return true;
+  }
+  while (game.trickStep < orderLen) {
     const pid = game.trickOrder[game.trickStep];
     const p = game.players[pid];
     if (!p.hand.length) {
