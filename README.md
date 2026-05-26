@@ -23,7 +23,7 @@ See **[DEPLOY.md](DEPLOY.md)** — GitHub Pages, Netlify, or Cloudflare. Push th
 
 ## Controls
 
-- **Start:** must-follow (**60 HP**) or may-follow (**68 HP**). Alternating siege; calamity rounds 2 & 4. Cooldown on (max 10 resting per team).
+- **Start:** must-follow (**60 HP**) or may-follow (**68 HP**). Alternating siege; calamity round 3 & every round 5+. Cooldown on (max 10 resting per team).
 - **Tricks:** click a highlighted card when it is your turn (lead or follow).
 - **Armory:** buy up to 2 items, then **Done shopping**.
 
@@ -33,7 +33,7 @@ Every card **played to a trick** sits out the **next deal only** (max **10** per
 
 ## Implemented
 
-- Deals 7→11, tricks = deal−1, alternating siege, calamity last trick (rounds 2 & 4)
+- Deals 7,7,8,9,10 (R5+), tricks = deal−1, alternating siege, calamity last trick (round 3 & R5+)
 - Card cooldown (official), must / may follow, combat tier spike r5+
 - Stash, trophies, Recycle payments, Permanents (r4+), finishers (r5+)
 - Competitive AI (combat / economist enemies, balanced ally)

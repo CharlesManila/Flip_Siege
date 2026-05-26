@@ -346,10 +346,10 @@
       <thead><tr><th>Round</th><th>Cards dealt each player</th><th>Max tricks</th><th>Calamity last trick?</th></tr></thead>
       <tbody>
         <tr><td>1</td><td>7</td><td>6</td><td>no</td></tr>
-        <tr><td>2</td><td>8</td><td>7</td><td><strong>yes</strong></td></tr>
-        <tr><td>3</td><td>9</td><td>8</td><td>no</td></tr>
-        <tr><td>4</td><td>10</td><td>9</td><td><strong>yes</strong></td></tr>
-        <tr><td>5+</td><td>11</td><td>10</td><td>no</td></tr>
+        <tr><td>2</td><td>7</td><td>6</td><td>no</td></tr>
+        <tr><td>3</td><td>8</td><td>7</td><td><strong>yes</strong></td></tr>
+        <tr><td>4</td><td>9</td><td>8</td><td>no</td></tr>
+        <tr><td>5+</td><td>10</td><td>9</td><td><strong>yes</strong></td></tr>
       </tbody>
     </table>
     <p>Max tricks = cards dealt − 1. The round usually ends when everyone is down to <strong>1 card</strong> (often one trick before the cap).</p>
@@ -358,7 +358,7 @@
       <li><strong>Deal</strong> — Deal the round’s hand size to <strong>each</strong> player; remainder → <strong>reserve</strong>. (Exclude <strong>resting</strong> cards — §6.2.)</li>
       <li><strong>Alternating siege</strong> — Trick 1: team that <strong>sieges first this round</strong> (Red/Blue token). Trick 2: other team sieges. Trick 3: first team again, and so on. Within the sieging team, <strong>partners alternate who leads</strong>.</li>
       <li><strong>Next round</strong> — Swap which team sieges <strong>trick 1</strong> (if Red sieged first in round 1, Blue sieges first in round 2).</li>
-      <li><strong>Calamity</strong> (rounds <strong>2</strong> and <strong>4</strong> only) — Last trick is a <strong>deck siege</strong>; both teams defend (§14). No trophies.</li>
+      <li><strong>Calamity</strong> (round <strong>3</strong> and every round <strong>5+</strong>) — Last trick is a <strong>deck siege</strong>; both teams defend (§14). No trophies.</li>
       <li><strong>Round end</strong> — Any player has <strong>exactly 1 card</strong> after a trick, <strong>or</strong> max tricks were played.</li>
       <li><strong>Armory</strong> — Each team makes <strong>2 purchases</strong> (§12). Played cards become <strong>resting</strong> next deal (§6.2).</li>
     </ol>
@@ -375,6 +375,14 @@
       <li><strong>Armory:</strong> spending from Stash does <strong>not</strong> add new rest; recycled cards still skip the deal if they rested from last round’s tricks.</li>
     </ul>
     <p>This rotates which monsters and towers show up — plan around colors that are “on rest” next deal.</p>
+    <h3>Deal safeguard (no short deals)</h3>
+    <p>Before each deal, if your team cannot fill <strong>every player’s hand</strong> from the living pool, the game auto-relieves pressure in order:</p>
+    <ol>
+      <li><strong>All Stash</strong> → top of reserve (trophies release borrow).</li>
+      <li><strong>Resting</strong> cards return to the pool until hands can be filled.</li>
+      <li><strong>Benched</strong> cards return to reserve early if still short.</li>
+    </ol>
+    <p>Everyone always receives the full dealt hand size for that round. Use the <strong>Vault</strong> at Armory to flush stash and clear resting <em>voluntarily</em> (§12).</p>
     <h3>6.3 — 1v1 companion pyramid</h3>
     <p>Layout: 1 face-down, 2 face-down, 4 face-up. Each trick: <strong>siege hand → siege slot → defense hand → defense slot</strong>. Slot = one card from uncovered pyramid <strong>or</strong> top of reserve (not both). Flip covered pyramid cards when uncovered.</p>
 
@@ -491,7 +499,8 @@
       <li><strong>Yellow</strong> — War Drums or Siege Breaker (round 5+).</li>
       <li><strong>Blue</strong> — Boiling Oil or Iron Curtain (round 5+). <strong>One blue worker globally</strong> per draft.</li>
       <li><strong>Red</strong> — bench 1–3 reserve cards (skip next deal). <strong>One red worker globally</strong> per draft.</li>
-      <li>Cannot return to the <strong>same station</strong> you just left on your previous pick.</li>
+      <li><strong>Vault (5th station)</strong> — <strong>flush your entire stash</strong> back to reserve (no color cost). Clears <strong>resting</strong> from cards your team played last round. <strong>Once per team per Armory</strong>. Legal when your team has heavy pressure: <strong>≥4 resting and ≥22 stash</strong>, or <strong>≥6 resting</strong>, or <strong>≥28 stash</strong>. <strong>No repeat-station lock</strong> on Vault; one worker at a time like red/blue.</li>
+      <li>Cannot return to the <strong>same color station</strong> you just left on your previous pick (Vault exempt).</li>
       <li>Max <strong>one bench action per team</strong> per Armory.</li>
       <li><strong>Permanent</strong> (round 4+): may be bought instead of a station pick when eligible (one per team per game).</li>
     </ul>
@@ -504,28 +513,19 @@
         <tr><td><strong>Round 5 Armory</strong></td><td><strong>Siege Breaker</strong>, <strong>Iron Curtain</strong></td></tr>
       </tbody>
     </table>
-    <h3>Visit items (green — instant)</h3>
+    <h3>Station costs (digital defaults)</h3>
     <table>
-      <thead><tr><th>Item</th><th>Cost</th><th>Effect</th></tr></thead>
+      <thead><tr><th>Station</th><th>Cost</th><th>Effect</th></tr></thead>
       <tbody>
-        <tr><td>Repair</td><td>3 green</td><td>+2 castle HP now (max = start HP)</td></tr>
-        <tr><td>Bench 1</td><td>3 red</td><td>Bench 1 card from <strong>reserve</strong> — skips <strong>next deal only</strong>, then returns to reserve top</td></tr>
-        <tr><td>Bench 2</td><td>7 red</td><td>Bench 2 cards from reserve (same return rule)</td></tr>
+        <tr><td>Green repair</td><td>4G ×2.2 per HP (max +6)</td><td>Heal now</td></tr>
+        <tr><td>Yellow</td><td>10Y / 18Y</td><td>War Drums (r1+) / Siege Breaker (r5+)</td></tr>
+        <tr><td>Blue</td><td>10B / 18B</td><td>Boiling Oil (r1+) / Iron Curtain (r5+)</td></tr>
+        <tr><td>Red bench</td><td>3R / 7R</td><td>Bench 1 or 2 reserve cards — skip <strong>next deal only</strong>, then top of reserve</td></tr>
+        <tr><td>Vault</td><td>All stash → reserve</td><td>Clear team <strong>resting</strong> from last round’s plays</td></tr>
       </tbody>
     </table>
-    <p><strong>Bench:</strong> Benched cards are not in hand, reserve, or the deal pool for that one round (like a short cooldown). After that deal, they return to the <strong>top</strong> of reserve. Card count unchanged. Illegal if reserve has fewer cards than you need. Cannot Bench from hand or Stash.</p>
-    <h3>Round items (blue — active next round only)</h3>
-    <table>
-      <thead><tr><th>Item</th><th>Cost</th><th>Effect</th></tr></thead>
-      <tbody>
-        <tr><td>War Drums</td><td>10 blue</td><td>+2 Assault (+ tier) on your <strong>first siege trick</strong> that round</td></tr>
-        <tr><td>Boiling Oil</td><td>10 blue</td><td>+2 Block (+ tier) on your <strong>first defense trick</strong> that round</td></tr>
-        <tr><td>March Tax</td><td>12 blue</td><td>+1 stash value on each off-color your team plays</td></tr>
-        <tr><td>Sally Gate</td><td>10 blue</td><td>On your <strong>first lead</strong> that round, led color may differ from your lead monster’s color</td></tr>
-        <tr><td>Siege Breaker</td><td>14 blue</td><td>+9 Assault (+ tier), first siege trick — buy at round 5+ Armory</td></tr>
-        <tr><td>Iron Curtain</td><td>14 blue</td><td>+9 Block (+ tier), first defense trick — buy at round 5+ Armory</td></tr>
-      </tbody>
-    </table>
+    <p><strong>Bench:</strong> Benched cards skip one deal only; card count unchanged. Paying yellow/blue/red may skip cards of that color on the <strong>next deal</strong> (stash color tax).</p>
+    <p><strong>March Tax</strong> and <strong>Sally Gate</strong> are not on the four-slot board in the digital client (use legacy rules if added).</p>
     <p><strong>Blue tax (optional, recommended):</strong> If you buy any Round item, your team <strong>skips blue cards</strong> on the <strong>next deal only</strong> (those cards stay in pool for later).</p>
     <p>Clear used round buffs at the start of the round after they apply.</p>
 
@@ -559,8 +559,8 @@
     <p>Elites do <strong>not</strong> auto-win tricks.</p>
 
     <!-- ========== CALAMITY ========== -->
-    <h2 id="calamity">14. Calamity (rounds 2 &amp; 4)</h2>
-    <p>On rounds with an <strong>odd</strong> max trick count (<strong>7</strong> in round 2, <strong>9</strong> in round 4), the <strong>last trick</strong> is a <strong>calamity</strong> — a deck siege that hits <strong>both</strong> castles. Announce at the start of the round: <em>“Calamity round — last trick is a deck siege.”</em></p>
+    <h2 id="calamity">14. Calamity (round 3 &amp; round 5+)</h2>
+    <p>On <strong>round 3</strong> and every round <strong>5 and later</strong>, the <strong>last trick</strong> is a <strong>calamity</strong> — a deck siege that hits <strong>both</strong> castles. Announce at the start of the round: <em>“Calamity round — last trick is a deck siege.”</em></p>
     <h3>Assault (from reserves)</h3>
     <ol>
       <li>Flip the top <strong>reserve</strong> monster from each deck in rotation (Team A, then Team B, then A… across the match).</li>
@@ -584,11 +584,11 @@
       <li>Any player has <strong>exactly 1 card</strong> in hand after a trick → go to Armory (no more tricks this round).</li>
       <li>Your team has played <strong>max tricks</strong> for this round → Armory.</li>
     </ul>
-    <p><strong>Important:</strong> If everyone hits 1 card before the calamity trick on rounds 2 or 4, you <strong>skip</strong> calamity that round.</p>
+    <p><strong>Important:</strong> If everyone hits 1 card before the calamity trick on a calamity round, you <strong>skip</strong> calamity that round.</p>
     <h3>Match ends when (either)</h3>
     <ul>
       <li><strong>Siege victory:</strong> A castle reaches <strong>0 HP</strong> (any round).</li>
-      <li><strong>Deck exhaustion (optional):</strong> From round 5+, if any player has <strong>≤ half</strong> the round’s deal size in hand after a trick (e.g. ≤5 when deal is 11), the game ends — <strong>highest castle HP wins</strong>. Default tournament rules often <strong>skip</strong> this.</li>
+      <li><strong>Deck exhaustion (optional):</strong> From round 6+, if any player has <strong>≤ half</strong> the round’s deal size in hand after a trick (e.g. ≤5 when deal is 10), the game ends — <strong>highest castle HP wins</strong>. Default tournament rules often <strong>skip</strong> this.</li>
     </ul>
     <h3>Short deal</h3>
     <p>If the living pool cannot fill all hands (common with <strong>cooldown</strong>, Stash lock, and benched cards), deal as many cards as possible from what exists. <strong>No reshuffle</strong> of Stash, removed, or resting cards into the deal. Some players may get fewer cards or zero.</p>
@@ -621,7 +621,7 @@
       <dt>Can a castle die in round 1–3?</dt>
       <dd><strong>Yes.</strong> There is no “stuck at 1 HP” rule. At standard HP, early knockouts are uncommon (~5–8% in round 3) but possible if one team spikes Assault.</dd>
       <dt>Why not the old “no kill before round 4” rule?</dt>
-      <dd>Removed so sieges feel real every round. Pacing is tuned with <strong>60 HP</strong> (must) / <strong>68 HP</strong> (may), <strong>card cooldown</strong>, and <strong>calamity</strong> on rounds 2 &amp; 4.</dd>
+      <dd>Removed so sieges feel real every round. Pacing is tuned with <strong>60 HP</strong> (must) / <strong>68 HP</strong> (may), <strong>card cooldown</strong>, and <strong>calamity</strong> on round 3 &amp; every round 5+.</dd>
       <dt>Do cards in my Stash rest (cooldown)?</dt>
       <dd>If you <strong>played</strong> them to a trick last round, yes — they rest next deal even while in Stash. Spending them at Armory returns them to the deck but does not cancel rest. Cards only moved to Stash as trophies were played by the <strong>enemy</strong> (their rest, not yours).</dd>
       <dt>Do resting cards go in the reserve pile?</dt>
@@ -645,8 +645,8 @@
       <div class="ref-card">
         <h3>Round &amp; win</h3>
         <ul style="margin:0;padding-left:1.1rem">
-          <li>Deal: 7,8,9,10,11 (R5+) · tricks = deal−1</li>
-          <li>Siege alternates each trick; R2&amp;4 calamity</li>
+          <li>Deal: 7,7,8,9,10 (R5+) · tricks = deal−1</li>
+          <li>Siege alternates each trick; R3 &amp; R5+ calamity</li>
           <li>End: someone at 1 card OR max tricks</li>
           <li>Armory: 2 buys / team</li>
           <li>Win: enemy 0 HP (any round)</li>

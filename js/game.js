@@ -26,12 +26,14 @@ import {
   blockValue,
   isSigilElite,
   cardsDealt,
+  addResources,
+  offColorResourceGain,
+  trophyResourceGain,
   isCalamityRound,
   isCalamityTrick,
   livingPool,
   markPlayedThisRound,
   maxTricks,
-  applyPaidColorSkip,
   benchCost,
   payStash,
   recyclePaid,
@@ -74,7 +76,7 @@ function makeTeam(id, deck, hp) {
     reserve: [],
     benched: [],
     removedIds: new Set(),
-    stash: [],
+    resources: { green: 0, blue: 0, red: 0, yellow: 0 },
     castleHp: hp,
     castleMax: hp,
     permanent: null,
@@ -83,9 +85,7 @@ function makeTeam(id, deck, hp) {
     pendingBuffs: new Set(),
     activeBuffs: new Set(),
     skipBlueDeal: false,
-    skipColorsDeal: new Set(),
     marchTax: false,
-    borrowedOut: new Set(),
     warDrumsUsed: false,
     boilingOilUsed: false,
     siegeBreakerUsed: false,
@@ -98,7 +98,6 @@ function makeTeam(id, deck, hp) {
 }
 
 function recordCardPlayed(game, card, teamId) {
-  if (!game.cooldownMechanic) return;
   markPlayedThisRound(game.teams[teamId], card.id);
 }
 
@@ -229,17 +228,12 @@ export function dealRound(game) {
     t.pendingBuffs = new Set();
     t.sallyGate = t.activeBuffs.has("sally_gate");
     let pool = livingPool(t, game.cooldownMechanic);
-    if (t.skipColorsDeal?.size) {
-      pool = pool.filter((c) => !t.skipColorsDeal.has(c.color));
-      t.skipColorsDeal.clear();
-    } else if (t.skipBlueDeal) {
+    if (t.skipBlueDeal) {
       pool = pool.filter((c) => c.color !== "blue");
       t.skipBlueDeal = false;
     }
     pool = shuffle(pool, game.rng);
     const resting = game.cooldownMechanic ? t.cooldownIds?.size ?? 0 : 0;
-    const plys = teamPlayers(game, t.id);
-    const need = hs * plys.length;
     const dealt = pool.slice(0, need);
     t.reserve = pool.slice(need);
     let idx = 0;
@@ -305,11 +299,6 @@ function endGame(game, reason = "castle") {
   else game.winner = game.teams[0].castleHp >= game.teams[1].castleHp ? 0 : 1;
   game.log.push(reason === "timeout" ? "Match ended — highest castle wins." : "Castle destroyed!");
   submitFinishedGameIfEligible(game, reason);
-}
-
-function addStash(team, card, value, source, game, teamId) {
-  team.stash.push({ card, value, source });
-  if (source === "trophy") game.teams[1 - teamId].borrowedOut.add(card.id);
 }
 
 function resolveTrick(game, plays) {
@@ -386,7 +375,10 @@ function resolveTrick(game, plays) {
     if (card.color === led) continue;
     let val = stashValue(card, siege);
     if (game.teams[player.teamId].marchTax) val += 1;
-    addStash(game.teams[player.teamId], card, val, "off_color", game, player.teamId);
+    const gain = offColorResourceGain(val);
+    if (gain > 0) {
+      addResources(game.teams[player.teamId], card.color, gain, "off_color");
+    }
   }
 
   const eligibleTrophies = siegeContrib
@@ -420,10 +412,14 @@ export function resolveTrophyAwards(eligible, assault, block) {
 
 function applyTrophy(game, card, defender) {
   const dt = game.teams[defender];
-  addStash(dt, card, card.mr, "trophy", game, defender);
-  game.teams[1 - defender].borrowedOut.add(card.id);
+  const gain = trophyResourceGain(card.mr);
+  const added = addResources(dt, card.color, gain, "trophy");
+  if (added <= 0) {
+    game.log.push(`Trophy: resource cap (${gain} ${card.color} lost — at limit).`);
+    return;
+  }
   game.log.push(
-    `Trophy: ${card.color} ${card.mr}/${card.tr} (monster/tower) → your Stash (value ${card.mr}).`,
+    `Trophy: +${added} ${card.color} resource (killed ${card.mr} assault).`,
   );
 }
 
@@ -755,9 +751,8 @@ export function buyArmoryItem(game, key, permanentColor = null) {
     if (game.round < 4) return { ok: false, msg: "Permanents unlock round 4." };
     const cost = PERMANENT_COSTS[perm];
     if (!cost) return { ok: false, msg: "Unknown item." };
-    const paid = payStash(team, cost, game, 0);
+    const paid = payStash(team, cost);
     if (!paid) return { ok: false, msg: "Cannot afford." };
-    game.recycle.push(...recyclePaid(paid));
     team.permanent = perm;
     team.permanentColor = permanentColor || "green";
     if (perm === "purge") {
@@ -780,9 +775,8 @@ export function buyArmoryItem(game, key, permanentColor = null) {
     if (!canAffordTeam(team, cost)) return { ok: false, msg: "Cannot afford." };
     if (key === "bench_1" && team.reserve.length < 1) return { ok: false, msg: "Reserve empty." };
     if (key === "bench_2" && team.reserve.length < 2) return { ok: false, msg: "Reserve too small." };
-    const paid = payStash(team, cost, game, 0);
+    const paid = payStash(team, cost);
     if (!paid) return { ok: false, msg: "Payment failed." };
-    game.recycle.push(...recyclePaid(paid));
     if (key === "repair") {
       team.castleHp = Math.min(team.castleMax, team.castleHp + 2);
       game.humanBuysLeft -= 1;
@@ -799,9 +793,8 @@ export function buyArmoryItem(game, key, permanentColor = null) {
     if ((ROUND_MIN[key] || 1) > game.round) return { ok: false, msg: "Not unlocked yet." };
     const cost = ROUND_COSTS[key];
     if (!canAffordTeam(team, cost)) return { ok: false, msg: "Cannot afford." };
-    const paid = payStash(team, cost, game, 0);
+    const paid = payStash(team, cost);
     if (!paid) return { ok: false, msg: "Payment failed." };
-    game.recycle.push(...recyclePaid(paid));
     team.pendingBuffs.add(key);
     team.skipBlueDeal = true;
     game.humanBuysLeft -= 1;
@@ -854,10 +847,8 @@ export function completeBenchPurchase(game, key, cardIds, teamId = 0) {
 
   const pb = game.pendingBench;
   const cost = pb?.draftChoice?.bench ? benchCost(pb.draftChoice.bench) : v.cost;
-  const paid = payStash(team, cost, game, teamId);
+  const paid = payStash(team, cost);
   if (!paid) return { ok: false, msg: "Payment failed." };
-  game.recycle.push(...recyclePaid(paid));
-  applyPaidColorSkip(team, cost);
   for (const id of ids) benchCardById(team, id);
 
   if (game.armoryDraft?.teamBenchBuys) {

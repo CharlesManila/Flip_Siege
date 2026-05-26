@@ -12,7 +12,6 @@ import {
   BENCH_MAX_PER_ARMORY,
   PERMANENT_COSTS,
   PERMANENT_UNLOCK_ROUND,
-  applyPaidColorSkip,
   armoryPickOrder,
   benchCost,
   blueDefenseTierCost,
@@ -21,8 +20,8 @@ import {
   isSlotOccupiedForPlayer,
   legalFourSlotChoices,
   payStash,
-  recyclePaid,
   repairCost,
+  resourceTotals,
   yellowAttackTierCost,
 } from "./rules.js";
 import { recordHumanArmoryBuy } from "./playLog.js";
@@ -108,10 +107,7 @@ export function applyFourSlotPurchase(game, teamId, slot, choice, rng) {
   if (slot === "red" && (choice?.bench || 0) > team.reserve.length) return false;
   if (slot === "red" && d.teamBenchBuys[teamId] >= BENCH_MAX_PER_ARMORY) return false;
 
-  const paid = payStash(team, cost, game, teamId);
-  if (!paid) return false;
-  game.recycle.push(...recyclePaid(paid));
-  applyPaidColorSkip(team, cost);
+  if (!payStash(team, cost)) return false;
 
   if (slot === "green" && choice?.heal) {
     team.castleHp = Math.min(team.castleMax, team.castleHp + choice.heal);
@@ -132,15 +128,12 @@ function tryPermanentDuringDraft(game, teamId, rng) {
   if (!opts.length) return false;
   const style = game.armoryStyles[teamId];
   const threshold = style === "saver" ? 22 : 18;
-  let stashSum = 0;
-  for (const p of team.stash) stashSum += p.value;
-  if (stashSum < threshold) return false;
+  const resSum = Object.values(resourceTotals(team)).reduce((a, b) => a + b, 0);
+  if (resSum < threshold) return false;
   if (style === "saver" && rng() > 0.55) return false;
   if (style !== "saver" && rng() > 0.35) return false;
   const choice = pickPermanentChoice(team, opts, rng);
-  const paid = payStash(team, PERMANENT_COSTS[choice], game, teamId);
-  if (!paid) return false;
-  game.recycle.push(...recyclePaid(paid));
+  if (!payStash(team, PERMANENT_COSTS[choice])) return false;
   team.permanent = choice;
   team.permanentColor = pickPermanentColor(team);
   if (choice === "purge") {

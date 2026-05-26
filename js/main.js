@@ -107,7 +107,18 @@ function render() {
       render();
       scheduleAI();
     },
-    onArmoryWorker: (slot, choice) => pickArmoryWorker(game, slot, choice),
+    onArmoryWorker: (slot, choice) => {
+      const r = pickArmoryWorker(game, slot, choice);
+      if (r?.ok) {
+        // Advance AI picks immediately and re-render, so the draft doesn't feel "stuck".
+        if (game.phase === "armory" && game.subphase === "armory_draft") {
+          advanceArmoryDraft(game, true);
+        }
+        render();
+        scheduleAI();
+      }
+      return r;
+    },
     onTrophy: onTrophy,
     onBenchConfirm: onBenchConfirm,
     onBenchCancel: onBenchCancel,

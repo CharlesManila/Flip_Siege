@@ -21,6 +21,8 @@ import {
   legalFourSlotChoices,
   repairCost,
   stashTotals,
+  resourceTotal,
+  TEAM_RESOURCE_CAP,
   yellowAttackTierCost,
   blueDefenseTierCost,
 } from "./rules.js";
@@ -55,11 +57,16 @@ export function renderCard(
   return el;
 }
 
-function stashBar(team) {
+function resourceBar(team) {
   const t = stashTotals(team);
-  return ["green", "blue", "red", "yellow"]
-    .map((c) => `<span class="stash-pip color-${c}" title="${c}">${c[0].toUpperCase()}:${t[c]}</span>`)
+  const sum = resourceTotal(team);
+  const pips = ["green", "blue", "red", "yellow"]
+    .map(
+      (c) =>
+        `<span class="stash-pip color-${c}" title="${c} resources">${c[0].toUpperCase()}:${t[c]}</span>`,
+    )
     .join("");
+  return `${pips}<span class="stash-total" title="Total resources (cap ${TEAM_RESOURCE_CAP})">Σ${sum}/${TEAM_RESOURCE_CAP}</span>`;
 }
 
 function renderPlayerSlot(p, game) {
@@ -529,7 +536,7 @@ export function renderBoard(game, hooks) {
         <div class="castle-label">${label}</div>
         <div class="castle-hp">${t.castleHp} / ${t.castleMax}</div>
         <div class="castle-bar"><div class="castle-fill" style="width:${pct}%"></div></div>
-        <div class="castle-stash">${stashBar(t)}</div>
+        <div class="castle-stash">${resourceBar(t)}</div>
         ${cdLine}
         ${t.permanent ? `<div class="perm-badge">${PERMANENT_NAMES[t.permanent]} (${t.permanentColor})</div>` : ""}
         ${[...t.activeBuffs].map((b) => `<span class="buff">${b}</span>`).join("")}
@@ -654,7 +661,7 @@ function renderArmoryDraft(game, hooks) {
   const prompt = $("#prompt");
   if (prompt) {
     if (human) {
-      prompt.textContent = `Your worker pick (${human.name}). Place on a station or Pass. Cannot revisit your last station.`;
+      prompt.textContent = `Your worker pick (${human.name}). Place on a station or Pass. Cannot revisit your last color station (Vault is always allowed).`;
     } else if (player) {
       prompt.textContent = `Waiting — ${player.name} is picking…`;
     } else {
@@ -691,6 +698,12 @@ function renderArmoryDraft(game, hooks) {
       btn.textContent = "Place worker";
       btn.onclick = () => showSlotChoices(game, hooks, slot, human);
       cell.appendChild(btn);
+    } else if (human && blocked) {
+      const note = document.createElement("div");
+      note.className = "station-locked-note";
+      note.textContent =
+        human.lastWorkerSlot === slot ? "Cannot repeat your last station" : "Occupied";
+      cell.appendChild(note);
     }
     grid.appendChild(cell);
   }
@@ -732,25 +745,28 @@ function showSlotChoices(game, hooks, slot, player) {
     btn.className = "armory-choice-btn";
     let label = "";
     let cost = {};
+    let desc = "";
     if (slot === "green" && choice.heal) {
       label = `Repair +${choice.heal} HP`;
       cost = repairCost(choice.heal);
+      desc = "Heals immediately (max +6).";
     } else if (slot === "red" && choice.bench) {
       label = `Bench ${choice.bench} card(s)`;
       cost = benchCost(choice.bench);
+      desc = "Chosen reserve cards skip next deal only, then return to reserve top.";
     } else if (slot === "yellow" && choice.tier) {
       label = choice.tier === "high" ? "Siege Breaker" : "War Drums";
       cost = yellowAttackTierCost(choice.tier, game.round);
+      desc = choice.tier === "high" ? "+9 Assault on first siege trick (next round)." : "+2 Assault on first siege trick (next round).";
     } else if (slot === "blue" && choice.tier) {
       label = choice.tier === "high" ? "Iron Curtain" : "Boiling Oil";
       cost = blueDefenseTierCost(choice.tier, game.round);
-    }
-    btn.innerHTML = `<span>${escapeHtml(label)}</span><span class="shop-item-cost">${escapeHtml(formatCost(cost))}</span>`;
+      desc = choice.tier === "high" ? "+9 Block on first defense trick (next round)." : "+2 Block on first defense trick (next round).";
+    btn.innerHTML = `<span>${escapeHtml(label)}</span><span class="shop-item-cost">${escapeHtml(formatCost(cost))}</span>${desc ? `<small class="armory-choice-desc">${escapeHtml(desc)}</small>` : ""}`;
     btn.onclick = () => {
       const r = hooks.onArmoryWorker?.(slot, choice);
       if (r?.needsBenchPick) {
         choicesEl.classList.add("hidden");
-        render();
       } else if (r?.ok) {
         choicesEl.classList.add("hidden");
       } else if (r?.msg) alert(r.msg);

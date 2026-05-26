@@ -37,8 +37,9 @@ function rand(rng) {
   return rng();
 }
 
-function stashSum(team) {
-  return team.stash.reduce((s, p) => s + p.value, 0);
+function resourceSum(team) {
+  const t = stashTotals(team);
+  return (t.green || 0) + (t.blue || 0) + (t.red || 0) + (t.yellow || 0);
 }
 
 function combatContrib(card, led, team, round, siege) {
@@ -500,7 +501,6 @@ export function scoreArmoryWorkerPick(game, team, teamId, slot, choice) {
     if ((t.blue || 0) < 8) s -= 25;
     return s;
   }
-
   return -20;
 }
 
@@ -566,7 +566,7 @@ export function runArmoryAI(game, teamId) {
   let buys = 0;
   let benchBuys = 0;
   const log = [];
-  const totalStash = stashSum(team);
+  const totalStash = resourceSum(team);
 
   const tryPerm = () => {
     if (team.permanent || buys >= BUYS_PER_ARMORY || game.round < PERMANENT_UNLOCK_ROUND) {
@@ -577,9 +577,8 @@ export function runArmoryAI(game, teamId) {
     if (game.round === 4 && totalStash < 22 && rand(rng) > 0.45) return false;
     if (team.castleHp < team.castleMax * 0.4 && rand(rng) > 0.35) return false;
     const choice = pickPermanentChoice(team, opts, rng);
-    const paid = payStash(team, PERMANENT_COSTS[choice], game, teamId);
+    const paid = payStash(team, PERMANENT_COSTS[choice]);
     if (!paid) return false;
-    game.recycle.push(...recyclePaid(paid));
     team.permanent = choice;
     team.permanentColor = pickPermanentColor(team);
     if (choice === "purge") {
@@ -603,9 +602,8 @@ export function runArmoryAI(game, teamId) {
     }
     if (key === "bench_1" && team.reserve.length < 1) return false;
     if (key === "bench_2" && team.reserve.length < 2) return false;
-    const paid = payStash(team, cost, game, teamId);
+    const paid = payStash(team, cost);
     if (!paid) return false;
-    game.recycle.push(...recyclePaid(paid));
     if (key === "repair") team.castleHp = Math.min(team.castleMax, team.castleHp + 2);
     else if (key === "bench_1") benchReserveSmart(team, 1);
     else if (key === "bench_2") benchReserveSmart(team, 2);
@@ -623,9 +621,8 @@ export function runArmoryAI(game, teamId) {
       const g = stashTotals(team).green || 0;
       if (g < 4 && team.castleHp < team.castleMax * 0.55) return false;
     }
-    const paid = payStash(team, ROUND_COSTS[key], game, teamId);
+    const paid = payStash(team, ROUND_COSTS[key]);
     if (!paid) return false;
-    game.recycle.push(...recyclePaid(paid));
     team.pendingBuffs.add(key);
     team.skipBlueDeal = true;
     buys++;

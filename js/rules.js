@@ -27,6 +27,28 @@ export const MAX_REPAIR_PER_VISIT = 6;
 export const MAX_BENCH_PER_VISIT = 3;
 export const FOUR_SLOT_PICK_THRESHOLD = 8;
 
+/** Off-color play earns floor(rank/2) resources (1 → 0, 10 → 5). */
+export function offColorResourceGain(faceValue) {
+  return Math.floor(faceValue / 2);
+}
+
+/** Trophy (killed assault): same curve as off-color. */
+export function trophyResourceGain(faceValue) {
+  return Math.floor(faceValue / 2);
+}
+
+/** Max total resources per team (all colors); excess income is lost. */
+export const TEAM_RESOURCE_CAP = 28;
+
+export function emptyResources() {
+  return { green: 0, blue: 0, red: 0, yellow: 0 };
+}
+
+export function ensureTeamResources(team) {
+  if (!team.resources) team.resources = emptyResources();
+  return team.resources;
+}
+
 export const YELLOW_ATTACK_TIERS = {
   low: { buff: "war_drums", cost: { yellow: 10 }, minRound: 1 },
   high: { buff: "siege_breaker", cost: { yellow: 18 }, minRound: 5 },
@@ -131,6 +153,18 @@ export function legalFourSlotChoices(game, team, slot) {
     }
   }
   return out;
+}
+
+/** Add resources (capped by TEAM_RESOURCE_CAP total, not per color). */
+export function addResources(team, color, amount, source) {
+  if (amount <= 0) return 0;
+  const gain = Math.min(amount, resourceCapRoom(team));
+  if (gain <= 0) return 0;
+  const r = ensureTeamResources(team);
+  r[color] = (r[color] || 0) + gain;
+  if (!team.resourceLog) team.resourceLog = { trophy: 0, off_color: 0 };
+  team.resourceLog[source === "trophy" ? "trophy" : "off_color"] += gain;
+  return gain;
 }
 
 /** Legacy 2-buy visit list (bench still used via four-slot). */
@@ -239,10 +273,14 @@ export const SHOP_DURATION_LABEL = {
   permanent: "Rest of game",
 };
 
-/** Cards dealt each player (round 1 = 7 … round 5+ = 11). */
+/** v2 deal: 7, 7, 8, 9, 10 (round 5+ stays at 10). Matches simulate_stash_2v2.py. */
+export const V2_HAND_BY_ROUND = [7, 7, 8, 9, 10];
+
+/** Cards dealt each player. */
 export function cardsDealt(round) {
-  if (round < 1) return 7;
-  return round >= 5 ? 11 : round + 6;
+  if (round < 1) return V2_HAND_BY_ROUND[0];
+  const idx = Math.min(round - 1, V2_HAND_BY_ROUND.length - 1);
+  return V2_HAND_BY_ROUND[idx];
 }
 
 /** Max tricks = dealt − 1 (round ends at 1 card left). */
@@ -267,13 +305,14 @@ export const CALAMITY_RESERVE_BLOCK_CAP = 7;
 export const CALAMITY_UNDERPREP_PER_CARD = 1;
 export const CALAMITY_EMPTY_RESERVE_EXTRA = 5;
 
+/** Calamity last trick on round 3 and every round 5+. */
 export function isCalamityRound(round) {
-  return maxTricks(round) % 2 === 1;
+  return round === 3 || round >= 5;
 }
 
 export function isCalamityTrick(tricksPlayed, round, players) {
+  if (!isCalamityRound(round)) return false;
   const mt = maxTricks(round);
-  if (mt % 2 === 0) return false;
   if (tricksPlayed === mt - 1) return true;
   const hs = players.map((p) => p.hand.length);
   return hs.length === 4 && Math.min(...hs) === 2 && Math.max(...hs) === 2;
@@ -376,44 +415,38 @@ export function canFollow(hand, led) {
   return hand.filter((c) => c.color === led);
 }
 
+export function resourceTotals(team) {
+  const r = ensureTeamResources(team);
+  return { green: r.green || 0, blue: r.blue || 0, red: r.red || 0, yellow: r.yellow || 0 };
+}
+
+export function resourceTotal(team) {
+  return Object.values(resourceTotals(team)).reduce((a, b) => a + b, 0);
+}
+
+export function resourceCapRoom(team) {
+  return Math.max(0, TEAM_RESOURCE_CAP - resourceTotal(team));
+}
+
+/** @deprecated alias */
 export function stashTotals(team) {
-  const t = { green: 0, blue: 0, red: 0, yellow: 0 };
-  for (const p of team.stash) t[p.card.color] += p.value;
-  return t;
+  return resourceTotals(team);
 }
 
 export function canAfford(team, cost) {
-  const t = stashTotals(team);
+  const t = resourceTotals(team);
   return COLORS.every((c) => t[c] >= (cost[c] || 0));
 }
 
-/** Pay stash; returns removed pieces for recycle. */
-export function payStash(team, cost, game, teamId) {
+/** Pay from resource tracker (no cards leave the deck). */
+export function payStash(team, cost) {
   if (!canAfford(team, cost)) return false;
-  const paid = [];
-  for (const color of COLORS) {
-    const need = cost[color] || 0;
-    if (need <= 0) continue;
-    const pool = team.stash
-      .filter((p) => p.card.color === color)
-      .sort((a, b) => a.value - b.value);
-    let total = 0;
-    const use = [];
-    for (const p of pool) {
-      use.push(p);
-      total += p.value;
-      if (total >= need) break;
-    }
-    for (const p of use) {
-      const i = team.stash.indexOf(p);
-      if (i >= 0) team.stash.splice(i, 1);
-      paid.push(p);
-      if (p.source === "trophy") {
-        game.teams[1 - teamId].borrowedOut.delete(p.card.id);
-      }
-    }
+  const r = ensureTeamResources(team);
+  for (const c of COLORS) {
+    const need = cost[c] || 0;
+    if (need > 0) r[c] -= need;
   }
-  return paid;
+  return true;
 }
 
 export function recyclePaid(paid) {
@@ -421,14 +454,11 @@ export function recyclePaid(paid) {
 }
 
 export function livingPool(team, useCooldown = false) {
-  const inStash = new Set(team.stash.map((p) => p.card.id));
   const benched = new Set((team.benched || []).map((c) => c.id));
   return team.deck.filter(
     (c) =>
       !team.removedIds.has(c.id) &&
       !benched.has(c.id) &&
-      !inStash.has(c.id) &&
-      !team.borrowedOut.has(c.id) &&
       !team.purgedColors.has(c.color) &&
       (!useCooldown || !team.cooldownIds?.has(c.id)),
   );

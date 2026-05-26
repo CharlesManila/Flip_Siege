@@ -296,6 +296,18 @@ body {
 .armory-station.station-red {
   background: #e6394622;
 }
+.armory-station.station-flush {
+  grid-column: 1 / -1;
+  background: #7b68ee22;
+  border-style: dashed;
+}
+
+.station-blurb {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  opacity: 0.9;
+}
 
 .station-title {
   margin: 0 0 0.35rem;
@@ -315,6 +327,12 @@ body {
   border: 3px solid #000;
   border-radius: 8px;
   cursor: pointer;
+}
+
+.station-locked-note {
+  font-size: 0.75rem;
+  opacity: 0.85;
+  font-weight: 600;
 }
 
 .armory-draft-pass-row {
@@ -348,6 +366,13 @@ body {
   background: #fff;
   font-family: inherit;
   cursor: pointer;
+}
+
+.armory-choice-desc {
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.85;
+  line-height: 1.25;
 }
 
 #armory-shop.hidden {

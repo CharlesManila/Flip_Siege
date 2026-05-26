@@ -105,10 +105,9 @@ export function recordTrickCompleted(game) {
   if (game.playLog) game.playLog.tricksCompleted += 1;
 }
 
-function stashSnapshot(team) {
-  const t = { green: 0, blue: 0, red: 0, yellow: 0 };
-  for (const p of team.stash) t[p.card.color] = (t[p.card.color] || 0) + p.value;
-  return t;
+function resourceSnapshot(team) {
+  const r = team.resources || { green: 0, blue: 0, red: 0, yellow: 0 };
+  return { green: r.green || 0, blue: r.blue || 0, red: r.red || 0, yellow: r.yellow || 0 };
 }
 
 function qualifiesAsFinished(game) {
@@ -145,7 +144,7 @@ function buildPayload(game, endReason) {
     armory_buys: pl.armoryBuys,
     trophies: pl.trophies,
     calamity_plays: pl.calamityPlays,
-    final_stash: [stashSnapshot(t0), stashSnapshot(t1)],
+    final_resources: [resourceSnapshot(t0), resourceSnapshot(t1)],
     human_permanent: t0.permanent
       ? { type: t0.permanent, color: t0.permanentColor }
       : null,

@@ -1,4 +1,4 @@
-/** Calamity trick — both teams defend deck siege (rounds 2 & 4). */
+/** Calamity trick — both teams defend deck siege (round 3 & every round 5+). */
 import { cloneCard, COLOR_META } from "./data/cards.js";
 import {
   CALAMITY_ASSAULT_MULT,
