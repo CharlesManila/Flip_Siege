@@ -209,7 +209,7 @@
   <div class="wrap">
     <header>
       <h1>Flip-Siege</h1>
-      <p class="subtitle">Official Player Rulebook · v0.4 · Stash + card cooldown · 2v2 &amp; 1v1</p>
+      <p class="subtitle">Official Player Rulebook · v0.5 · Resource tracker + card cooldown · 2v2 &amp; 1v1</p>
       <p class="no-print"><strong>Tip:</strong> Share the PDF (<code>Flip-Siege-Rulebook-v0.4.pdf</code>), print (Ctrl+P), or use the browser playtest (see <code>themes/flip-siege/play/DEPLOY.md</code> for free hosting).</p>
     </header>
 
@@ -226,8 +226,8 @@
         <li><a href="#trick">Tricks step by step</a></li>
         <li><a href="#follow">Follow color</a></li>
         <li><a href="#combat">Assault, Block &amp; damage</a></li>
-        <li><a href="#stash">Stash currency</a></li>
-        <li><a href="#trophies">Trophies</a></li>
+        <li><a href="#stash">Resources (off-color + trophies)</a></li>
+        <li><a href="#trophies">Trophy rewards</a></li>
         <li><a href="#armory">Armory</a></li>
         <li><a href="#permanents">Permanents &amp; elites</a></li>
         <li><a href="#calamity">Calamity</a></li>
@@ -245,12 +245,12 @@
       <strong>sieges</strong> with monsters face-up; the enemy <strong>defends</strong> with towers face-up.
     </p>
     <p>
-      Cards that do not match the <strong>led color</strong> go to your team <strong>Stash</strong> as currency.
-      After each round you spend Stash at the <strong>Armory</strong> for repairs, deck thinning, and combat buffs.
+      Cards that do not match the <strong>led color</strong> earn team <strong>Resources</strong> by color.
+      After each round you spend Resources at the <strong>Armory</strong> for repairs, reserve benching, and combat buffs.
       Cards you played to tricks <strong>rest</strong> one deal (cooldown — §6.2). Reduce the enemy castle to <strong>0 HP</strong> to win.
     </p>
     <div class="callout ok">
-      <strong>One sentence:</strong> Win tricks → chip or crush castles → bank off-color cards → buy power spikes → siege again.
+      <strong>One sentence:</strong> Win tricks → gain resources from off-color/trophies → buy Armory spikes → siege again.
     </div>
 
     <!-- ========== COMPONENTS ========== -->
@@ -259,7 +259,7 @@
     <ul>
       <li><strong>80 cards</strong> — 40 per team (same faces; different card backs for red vs blue team)</li>
       <li><strong>2 castle HP tracks</strong> (dials or paper)</li>
-      <li><strong>2 Stash areas</strong> per team (face-up)</li>
+      <li><strong>Resource tracker</strong> per team (green / blue / red / yellow + total cap)</li>
       <li><strong>Armory board</strong> or list (upgrade prices)</li>
       <li><strong>Team sheet</strong> — Permanent chosen, round buffs ticked (optional)</li>
     </ul>
@@ -268,7 +268,6 @@
       <li>Partners sit together. Each team uses one 40-card deck (one back color).</li>
       <li>Agree <strong>starting castle HP</strong> and write it on both tracks (see §5).</li>
       <li>Agree <strong>follow rule</strong>: must-follow (standard) or may-follow (variant).</li>
-      <li>Agree <strong>Stash mode</strong>: <strong>Recycle</strong> (default) or Destroy (variant).</li>
       <li><strong>Card cooldown</strong> is standard in v0.4 (played cards rest next deal, max 10 per team — §6.2).</li>
       <li><strong>Trophies:</strong> auto if one qualifies or Block ≥ Assault; else pick one (see §11).</li>
       <li>Choose first sieging team (coin flip). <strong>Round = 1.</strong></li>
@@ -313,12 +312,12 @@
         <div class="zone deck"><strong>Deck (40)</strong> All cards you own this match. Never runs out — cards move between zones.</div>
         <div class="zone"><strong>Hand</strong> Dealt this round. Secret.</div>
         <div class="zone"><strong>Reserve</strong> Undealt pile this round (face-down). Used for calamity flip &amp; Bench.</div>
-        <div class="zone stash"><strong>Stash</strong> Off-color plays + trophies (face-up). Locked — not dealt until spent.</div>
-        <div class="zone removed"><strong>Removed</strong> Purged or Destroy-paid trophies. Never dealt again (Bench is <em>not</em> removed).</div>
+        <div class="zone stash"><strong>Resources</strong> Team tracker by color. Off-color + trophies add points; spend at Armory.</div>
+        <div class="zone removed"><strong>Removed</strong> Cards purged by Great Purge. Never dealt again (Bench is <em>not</em> removed).</div>
         <div class="zone"><strong>Resting</strong> Played last round — skip <strong>next deal only</strong> (max 10 per team), then return to pool.</div>
         <div class="zone"><strong>Table trick</strong> 4 cards played, then resolved.</div>
       </div>
-      <figcaption>2v2: one deck per team. Living pool = deck minus Stash, removed, purged, borrowed trophies, and resting (cooldown) cards.</figcaption>
+      <figcaption>2v2: one deck per team. Living pool = deck minus purged, benched, and resting (cooldown) cards.</figcaption>
     </figure>
 
     <!-- ========== GOAL ========== -->
@@ -335,7 +334,7 @@
     </table>
     <p><strong>Repair</strong> heals +2 HP but never above your <strong>starting HP</strong>.</p>
     <div class="callout warn">
-      <strong>High HP warning:</strong> Very long games lock many cards in Stash and resting (cooldown). You may hit <strong>short deals</strong> often or the optional <strong>deck exhaustion</strong> win (§15) instead of a siege knockout.
+      <strong>High HP warning:</strong> Very long games can overemphasize round-5+ buff cycles and optional deck-exhaustion wins instead of early siege knockouts.
     </div>
 
     <!-- ========== ROUND ========== -->
@@ -371,18 +370,17 @@
       <li>They are <strong>not dealt</strong> in the <strong>next</strong> round (neither to hand nor reserve).</li>
       <li>They return to the living pool for the round <strong>after that</strong> (same as “skip one deal”).</li>
       <li><strong>Cap:</strong> At most <strong>10</strong> resting cards per team (if you played more, only the <strong>10 most recent</strong> plays rest).</li>
-      <li>Cards <strong>not played</strong> (left in hand or reserve) are <strong>not</strong> affected. Cards you <strong>played</strong> (including off-color that went to Stash) <strong>do</strong> rest — Stash and resting stack (not dealt next round).</li>
-      <li><strong>Armory:</strong> spending from Stash does <strong>not</strong> add new rest; recycled cards still skip the deal if they rested from last round’s tricks.</li>
+      <li>Cards <strong>not played</strong> (left in hand or reserve) are <strong>not</strong> affected. Cards you <strong>played</strong> (including off-color cards that generated resources) <strong>do</strong> rest.</li>
+      <li><strong>Armory:</strong> spending resources does <strong>not</strong> add new rest.</li>
     </ul>
     <p>This rotates which monsters and towers show up — plan around colors that are “on rest” next deal.</p>
     <h3>Deal safeguard (no short deals)</h3>
     <p>Before each deal, if your team cannot fill <strong>every player’s hand</strong> from the living pool, the game auto-relieves pressure in order:</p>
     <ol>
-      <li><strong>All Stash</strong> → top of reserve (trophies release borrow).</li>
       <li><strong>Resting</strong> cards return to the pool until hands can be filled.</li>
       <li><strong>Benched</strong> cards return to reserve early if still short.</li>
     </ol>
-    <p>Everyone always receives the full dealt hand size for that round. Use the <strong>Vault</strong> at Armory to flush stash and clear resting <em>voluntarily</em> (§12).</p>
+    <p>Deal safeguard keeps rounds playable in low-pool edge cases by auto-relieving resting/bench pressure before dealing.</p>
     <h3>6.3 — 1v1 companion pyramid</h3>
     <p>Layout: 1 face-down, 2 face-down, 4 face-up. Each trick: <strong>siege hand → siege slot → defense hand → defense slot</strong>. Slot = one card from uncovered pyramid <strong>or</strong> top of reserve (not both). Flip covered pyramid cards when uncovered.</p>
 
@@ -407,7 +405,7 @@
       <li><strong>Defender A</strong> plays tower-up.</li>
       <li><strong>Siege partner</strong> plays monster-up.</li>
       <li><strong>Defender B</strong> plays tower-up.</li>
-      <li>Resolve Assault, Block, damage, Stash (§10), trophies (§11) — except on <strong>calamity</strong> (§14).</li>
+      <li>Resolve Assault, Block, damage, resources (§10), trophies (§11) — except on <strong>calamity</strong> (§14).</li>
       <li>Check round end / game end (§15).</li>
     </ol>
     <p>If a player has <strong>no cards in hand</strong> when they would play, skip them (rare after short deal).</p>
@@ -417,9 +415,9 @@
     <h3>Must-follow (official)</h3>
     <p>If you have <strong>any card of led color</strong> in hand (on the face you are allowed to play), you <strong>must</strong> play a led-color card.</p>
     <h3>May-follow (optional variant)</h3>
-    <p>If you have led color, you may instead play an <strong>off-color</strong> card for Stash (still the correct face: monster on siege, tower on defense). Use <strong>68 HP</strong> in 2v2 instead of 60. All other rules the same.</p>
+    <p>If you have led color, you may instead play an <strong>off-color</strong> card for resources (still the correct face: monster on siege, tower on defense). Use <strong>68 HP</strong> in 2v2 instead of 60. All other rules the same.</p>
     <div class="callout">
-      <strong>Void:</strong> No led color in hand → play any card (almost always off-color for Stash value).
+      <strong>Void:</strong> No led color in hand → play any card (often off-color for resource gain).
     </div>
 
     <!-- ========== COMBAT ========== -->
@@ -440,39 +438,31 @@
     </div>
     <p><strong>Example:</strong> Siege Breaker (+9 base) on round 6 first siege trick → <strong>+9 + 10 = +19 Assault</strong> before cards.</p>
     <h3>Worked example (2v2)</h3>
-    <p><strong>Lead green.</strong> Siege: Goblin 3 + Goblin 1 → Assault <strong>4</strong>. Defense: Bow 2 + off-color Orc → Block <strong>2</strong>. Damage <strong>2</strong>. Orc goes to defense team Stash (value 4 on tower face played).</p>
+    <p><strong>Lead green.</strong> Siege: Goblin 3 + Goblin 1 → Assault <strong>4</strong>. Defense: Bow 2 + off-color Orc → Block <strong>2</strong>. Damage <strong>2</strong>. Orc gives defense team resources = ⌊4/2⌋ = 2.</p>
 
-    <!-- ========== STASH ========== -->
-    <h2 id="stash">10. Stash currency</h2>
-    <p>Every <strong>off-color</strong> card played goes to that player’s team <strong>Stash</strong> (face-up).</p>
+    <!-- ========== RESOURCES ========== -->
+    <h2 id="stash">10. Resources (off-color + trophies)</h2>
+    <p>Flip-Siege now uses a <strong>resource tracker</strong> (no physical stash cards, no borrowed trophies).</p>
     <ul>
-      <li><strong>Value</strong> = rank on the face you played (monster rank on siege, tower rank on defense).</li>
-      <li>Stash is split by color: you pay costs in <strong>green / blue / red / yellow value</strong>.</li>
-      <li>Cards in Stash are <strong>not dealt</strong> until you spend them.</li>
-      <li><strong>Overpay:</strong> If you must pay 10 blue and pay an 8+4, the extra value is <strong>lost</strong> (no change).</li>
-      <li><strong>March Tax</strong> (Armory): next round, each off-color your team plays earns <strong>+1 extra</strong> stash value.</li>
+      <li><strong>Off-color play:</strong> gain <strong>⌊rank / 2⌋</strong> resources in that card's color.</li>
+      <li><strong>Trophy reward:</strong> gain <strong>⌊monster rank / 2⌋</strong> resources in the trophy card's color.</li>
+      <li><strong>Global cap:</strong> each team can hold at most <strong>28 total</strong> resources across all colors.</li>
+      <li><strong>Overflow:</strong> income beyond the cap is lost.</li>
+      <li><strong>Spend:</strong> Armory costs still pay by color (green/blue/red/yellow pools).</li>
     </ul>
-    <h3>Recycle vs Destroy (when paying)</h3>
-    <table>
-      <thead><tr><th>Mode</th><th>When you pay at Armory</th></tr></thead>
-      <tbody>
-        <tr><td><strong>Recycle</strong> (default)</td><td>Payment cards return to your deck and can be dealt again.</td></tr>
-        <tr><td><strong>Destroy</strong> (variant)</td><td>Payment cards leave the match permanently.</td></tr>
-      </tbody>
-    </table>
     <h3>Paying costs (summary)</h3>
     <table>
       <thead><tr><th>Tier</th><th>Pay with</th><th>Examples</th></tr></thead>
       <tbody>
         <tr><td>Visit (instant)</td><td><strong>Green</strong> / <strong>Red</strong></td><td>Repair 3G · Bench 1 = 3R · Bench 2 = 7R</td></tr>
-        <tr><td>Round (next round)</td><td><strong>Blue</strong> value</td><td>War Drums 10B · Boiling Oil 10B · March Tax 12B · Sally Gate 10B</td></tr>
-        <tr><td>Finishers</td><td><strong>Blue</strong> (round 5+ buy)</td><td>Siege Breaker 14B · Iron Curtain 14B</td></tr>
+        <tr><td>Round (next round)</td><td><strong>Blue</strong> / <strong>Yellow</strong></td><td>War Drums 10Y · Boiling Oil 10B</td></tr>
+        <tr><td>Finishers</td><td><strong>Blue</strong> / <strong>Yellow</strong> (round 5+)</td><td>Siege Breaker 18Y · Iron Curtain 18B</td></tr>
         <tr><td>Permanent (once)</td><td><strong>All four colors</strong></td><td>See §13 (unlock round 4 Armory)</td></tr>
       </tbody>
     </table>
 
     <!-- ========== TROPHIES ========== -->
-    <h2 id="trophies">11. Trophies (borrowed monsters)</h2>
+    <h2 id="trophies">11. Trophy rewards</h2>
     <p>After resolving damage, check trophies:</p>
     <ol>
       <li>Look at enemy <strong>siege monsters</strong> that contributed <strong>led-color Assault &gt; 0</strong>.</li>
@@ -481,15 +471,12 @@
         <ul>
           <li><strong>One eligible</strong> → take it automatically.</li>
           <li><strong>Several eligible</strong> and your team’s <strong>Block ≥ resolved Assault</strong> (after buffs, before damage) → take <strong>all</strong> eligible monsters.</li>
-          <li><strong>Several eligible</strong> but <strong>Block &lt; Assault</strong> → defending team <strong>picks one</strong> (not automatic highest/lowest — you might take a lower monster rank for a better tower rank). Stash payment value is still each card’s <strong>monster rank</strong>.</li>
+          <li><strong>Several eligible</strong> but <strong>Block &lt; Assault</strong> → defending team <strong>picks one</strong>.</li>
         </ul>
       </li>
-      <li>Put each trophy in your Stash (monster-up). Each is <strong>borrowed</strong>: enemy cannot deal it while it sits in your Stash.</li>
+      <li>No card is taken. Gain resource points for the chosen trophy: <strong>⌊monster rank / 2⌋</strong> in that card's color.</li>
     </ol>
-    <p><strong>When you spend a trophy:</strong> Recycle → returns to enemy deck. Destroy mode → removed from match.</p>
-    <div class="callout warn">
-      Trophies are <strong>not</strong> off-color plays. They do not use the “blocked gold” legacy rule — only Stash value matters.
-    </div>
+    <p><strong>No borrow lock:</strong> trophies do not remove cards from the enemy deck in this ruleset.</p>
 
     <!-- ========== ARMORY ========== -->
     <h2 id="armory">12. Armory (worker draft)</h2>
@@ -499,8 +486,8 @@
       <li><strong>Yellow</strong> — War Drums or Siege Breaker (round 5+).</li>
       <li><strong>Blue</strong> — Boiling Oil or Iron Curtain (round 5+). <strong>One blue worker globally</strong> per draft.</li>
       <li><strong>Red</strong> — bench 1–3 reserve cards (skip next deal). <strong>One red worker globally</strong> per draft.</li>
-      <li><strong>Vault (5th station)</strong> — <strong>flush your entire stash</strong> back to reserve (no color cost). Clears <strong>resting</strong> from cards your team played last round. <strong>Once per team per Armory</strong>. Legal when your team has heavy pressure: <strong>≥4 resting and ≥22 stash</strong>, or <strong>≥6 resting</strong>, or <strong>≥28 stash</strong>. <strong>No repeat-station lock</strong> on Vault; one worker at a time like red/blue.</li>
-      <li>Cannot return to the <strong>same color station</strong> you just left on your previous pick (Vault exempt).</li>
+      <li><strong>No Vault station</strong> in the live game.</li>
+      <li>Cannot return to the <strong>same color station</strong> you just left on your previous pick.</li>
       <li>Max <strong>one bench action per team</strong> per Armory.</li>
       <li><strong>Permanent</strong> (round 4+): may be bought instead of a station pick when eligible (one per team per game).</li>
     </ul>
@@ -508,7 +495,7 @@
     <table>
       <thead><tr><th>When</th><th>Unlocks</th></tr></thead>
       <tbody>
-        <tr><td>Any Armory</td><td>Repair, Bench, War Drums, Boiling Oil, March Tax, Sally Gate</td></tr>
+        <tr><td>Any Armory</td><td>Repair, Bench, War Drums, Boiling Oil</td></tr>
         <tr><td><strong>Round 4 Armory</strong></td><td><strong>Permanents</strong> (one per team per game)</td></tr>
         <tr><td><strong>Round 5 Armory</strong></td><td><strong>Siege Breaker</strong>, <strong>Iron Curtain</strong></td></tr>
       </tbody>
@@ -520,13 +507,10 @@
         <tr><td>Green repair</td><td>4G ×2.2 per HP (max +6)</td><td>Heal now</td></tr>
         <tr><td>Yellow</td><td>10Y / 18Y</td><td>War Drums (r1+) / Siege Breaker (r5+)</td></tr>
         <tr><td>Blue</td><td>10B / 18B</td><td>Boiling Oil (r1+) / Iron Curtain (r5+)</td></tr>
-        <tr><td>Red bench</td><td>3R / 7R</td><td>Bench 1 or 2 reserve cards — skip <strong>next deal only</strong>, then top of reserve</td></tr>
-        <tr><td>Vault</td><td>All stash → reserve</td><td>Clear team <strong>resting</strong> from last round’s plays</td></tr>
+        <tr><td>Red bench</td><td>3R / 7R / 16R</td><td>Bench 1/2/3 reserve cards — skip <strong>next deal only</strong>, then top of reserve</td></tr>
       </tbody>
     </table>
-    <p><strong>Bench:</strong> Benched cards skip one deal only; card count unchanged. Paying yellow/blue/red may skip cards of that color on the <strong>next deal</strong> (stash color tax).</p>
-    <p><strong>March Tax</strong> and <strong>Sally Gate</strong> are not on the four-slot board in the digital client (use legacy rules if added).</p>
-    <p><strong>Blue tax (optional, recommended):</strong> If you buy any Round item, your team <strong>skips blue cards</strong> on the <strong>next deal only</strong> (those cards stay in pool for later).</p>
+    <p><strong>Bench:</strong> Benched cards skip one deal only; card count unchanged.</p>
     <p>Clear used round buffs at the start of the round after they apply.</p>
 
     <!-- ========== PERMANENTS ========== -->
@@ -539,7 +523,7 @@
         <tr><td>Color Mastery</td><td>6G+8B+6R+6Y</td><td>+1 Assault &amp; +1 Block on matching cards when led (+ tier bonus on big rounds)</td></tr>
         <tr><td>Warlord's Crest</td><td>5G+12B+5R+6Y</td><td>+2 Assault on matching siege when led (+ tier)</td></tr>
         <tr><td>Bulwark Creed</td><td>5G+12B+6R+5Y</td><td>+2 Block on matching defense when led (+ tier)</td></tr>
-        <tr><td>Great Purge</td><td>8 of each color</td><td>Remove <strong>all 10 cards</strong> of chosen color from your deck permanently (even if some were in Stash — pay first)</td></tr>
+        <tr><td>Great Purge</td><td>8 of each color</td><td>Remove <strong>all 10 cards</strong> of chosen color from your deck permanently.</td></tr>
       </tbody>
     </table>
     <h3>Royal Sigil — stacking order</h3>
@@ -568,7 +552,7 @@
       <li><strong>Second card</strong> <strong>adds its monster rank</strong> to assault (same led color for defense).</li>
     </ol>
     <h3>Defense (both teams)</h3>
-    <p>Each team defends like a normal trick: <strong>every player plays one card tower-up</strong> (must-follow led color if you can; off-color → Stash). <strong>No trophies.</strong> Assault = <strong>sum of both flipped monster ranks</strong> (no round trim on that total). Each castle takes damage = <strong>Assault + underprep penalty − that team’s Block</strong> (min 0).</p>
+    <p>Each team defends like a normal trick: <strong>every player plays one card tower-up</strong> (must-follow led color if you can; off-color → resources). <strong>No trophies during calamity.</strong> Assault = <strong>sum of both flipped monster ranks</strong> (no round trim on that total). Each castle takes damage = <strong>Assault + underprep penalty − that team’s Block</strong> (min 0).</p>
     <p>After calamity resolves, the two flipped reserve monsters are <strong>not played</strong> — return them to the <strong>top</strong> of the same reserves. They do <strong>not</strong> enter card cooldown (only tower cards played from hand do).</p>
     <h3>Reserve prep</h3>
     <ul>
@@ -576,6 +560,14 @@
       <li><strong>Underprepared:</strong> Each card <strong>below 9</strong> in your reserve → <strong>+1</strong> extra damage; <strong>empty</strong> reserve → <strong>+5</strong> more.</li>
     </ul>
     <p>Keep reserve depth going into the last trick; don’t rely only on hand towers.</p>
+    <h3>Fast block math (table)</h3>
+    <ol>
+      <li>Start from <strong>prep block</strong> (reserve wall + depth bonus).</li>
+      <li>Add each defender's <strong>led-color tower block</strong> (off-color = 0 block).</li>
+      <li>Add first-defense buffs if active (Boiling Oil / Iron Curtain).</li>
+      <li><strong>Total block</strong> = prep + cards + buffs.</li>
+      <li><strong>Damage</strong> = Assault + underprep − total block (minimum 0).</li>
+    </ol>
 
     <!-- ========== END ========== -->
     <h2 id="end">15. When rounds &amp; games end</h2>
@@ -591,7 +583,7 @@
       <li><strong>Deck exhaustion (optional):</strong> From round 6+, if any player has <strong>≤ half</strong> the round’s deal size in hand after a trick (e.g. ≤5 when deal is 10), the game ends — <strong>highest castle HP wins</strong>. Default tournament rules often <strong>skip</strong> this.</li>
     </ul>
     <h3>Short deal</h3>
-    <p>If the living pool cannot fill all hands (common with <strong>cooldown</strong>, Stash lock, and benched cards), deal as many cards as possible from what exists. <strong>No reshuffle</strong> of Stash, removed, or resting cards into the deal. Some players may get fewer cards or zero.</p>
+    <p>If the living pool cannot fill all hands (common with <strong>cooldown</strong>, purge, and benched cards), deal as many cards as possible from what exists. Some players may get fewer cards or zero.</p>
 
     <!-- ========== FAQ ========== -->
     <h2 id="faq">16. FAQ &amp; edge cases</h2>
@@ -602,28 +594,26 @@
       <dd>No. Max one Bench purchase per visit.</dd>
       <dt>What if I want to Bench but reserve is empty?</dt>
       <dd>You cannot buy Bench. The purchase is illegal.</dd>
-      <dt>Does Purge remove cards in my Stash?</dt>
-      <dd>Yes — all 10 of that color leave the game when Purge resolves (pay the cost first).</dd>
-      <dt>Can the enemy deal a card I have as a trophy?</dt>
-      <dd>No. Borrowed trophies are undeliverable until you spend them from Stash.</dd>
+      <dt>Does Purge remove cards currently in reserve/hand?</dt>
+      <dd>Yes. Great Purge removes all 10 cards of that color from your deck state when it resolves.</dd>
+      <dt>Can the enemy deal a card I “won” as a trophy?</dt>
+      <dd>Yes. Trophies give resource points only; no card is captured or borrowed.</dd>
       <dt>Who sieges trick 1 each round?</dt>
       <dd>Alternate by round (Red trick 1 in round 1 → Blue trick 1 in round 2). Within the round, <strong>siege alternates every trick</strong>; partners on the sieging team alternate who leads.</dd>
       <dt>Do off-color cards in a trick count for Assault/Block?</dt>
-      <dd>No. Only led-color ranks count. Off-color only adds Stash.</dd>
-      <dt>March Tax — double rank?</dt>
-      <dd>No. +1 stash value only, not double rank.</dd>
-      <dt>Sally Gate — how does it work?</dt>
-      <dd>On your first lead that round, announce a led color different from your lead monster’s color before others play. You still play that monster; matching cards use the announced color.</dd>
+      <dd>No. Only led-color ranks count. Off-color gives resources only.</dd>
+      <dt>How much resource do I get from off-color or trophies?</dt>
+      <dd><strong>⌊rank/2⌋</strong> (1→0, 10→5). Team total is capped at <strong>28</strong>.</dd>
       <dt>Is there a hand size 12?</dt>
       <dd>No. Cap is 11 from round 5 onward.</dd>
-      <dt>Legacy Gold rules?</dt>
-      <dd>Older playtests used Gold tokens. Official v0.4 uses <strong>Stash only</strong> plus <strong>card cooldown</strong>. See design docs for legacy Gold mode.</dd>
+      <dt>Legacy Gold / Stash-card rules?</dt>
+      <dd>Not used in the live game. Official v0.5 uses the <strong>resource tracker</strong> plus cooldown.</dd>
       <dt>Can a castle die in round 1–3?</dt>
       <dd><strong>Yes.</strong> There is no “stuck at 1 HP” rule. At standard HP, early knockouts are uncommon (~5–8% in round 3) but possible if one team spikes Assault.</dd>
       <dt>Why not the old “no kill before round 4” rule?</dt>
       <dd>Removed so sieges feel real every round. Pacing is tuned with <strong>60 HP</strong> (must) / <strong>68 HP</strong> (may), <strong>card cooldown</strong>, and <strong>calamity</strong> on round 3 &amp; every round 5+.</dd>
-      <dt>Do cards in my Stash rest (cooldown)?</dt>
-      <dd>If you <strong>played</strong> them to a trick last round, yes — they rest next deal even while in Stash. Spending them at Armory returns them to the deck but does not cancel rest. Cards only moved to Stash as trophies were played by the <strong>enemy</strong> (their rest, not yours).</dd>
+      <dt>Do resource points go to cooldown?</dt>
+      <dd>No. Cooldown only applies to cards played to tricks.</dd>
       <dt>Do resting cards go in the reserve pile?</dt>
       <dd><strong>No.</strong> Resting is separate from reserve. Reserve = undealt this round only. Resting = played last round, excluded from the next deal everywhere.</dd>
     </dl>
@@ -639,7 +629,7 @@
           <li>Must follow led color if able</li>
           <li>Assault − Block = damage (min 0)</li>
           <li>Castles can hit 0 HP any round</li>
-          <li>Off-color → Stash (rank = value)</li>
+          <li>Off-color / trophy → resources: ⌊rank/2⌋</li>
         </ul>
       </div>
       <div class="ref-card">
@@ -651,7 +641,7 @@
           <li>Armory: 2 buys / team</li>
           <li>Win: enemy 0 HP (any round)</li>
           <li>Cooldown: played cards rest 1 deal (max 10)</li>
-          <li>2v2 HP: 50 must / 58 may</li>
+          <li>2v2 HP: 60 must / 68 may</li>
         </ul>
       </div>
       <div class="ref-card">
@@ -661,11 +651,11 @@
           <li>R5 +5 · R6 +10 · R7+ +11…</li>
           <li>Permanents @ R4 Armory</li>
           <li>Finishers @ R5 Armory</li>
-          <li>Recycle: paid cards return to deck</li>
+          <li>Pay by color from team resources</li>
         </ul>
       </div>
       <div class="ref-card">
-        <h3>Stash pay</h3>
+        <h3>Resource pay</h3>
         <ul style="margin:0;padding-left:1.1rem">
           <li>Green: Repair 3 · Red: Bench 3 / 7</li>
           <li>Blue: Drums/Oil 10 · Tax 12</li>

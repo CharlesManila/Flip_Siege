@@ -18,7 +18,7 @@
     <section id="screen-setup">
       <h1>Flip-Siege</h1>
       <p class="small-note">
-        You + ally AI vs two enemy AIs. Official rules — Stash, card cooldown, ~50% games end round 4 / ~50% round 5+.
+        You + ally AI vs two enemy AIs. Official rules — resource tracker, card cooldown, and calamity on round 3 &amp; 5+.
       </p>
       <div class="setup-options">
         <strong>Follow rule</strong>
@@ -29,7 +29,7 @@
         <strong>Card cooldown (official):</strong> cards played to tricks rest next deal (up to 10 per team), then return.
       </p>
       <p class="small-note">
-        Siege with monsters face-up, defend with towers. Off-color → Stash. 2 Armory buys per round.
+        Siege with monsters face-up, defend with towers. Off-color and trophies add resources (⌊rank/2⌋), cap 28 per team.
       </p>
       <p class="small-note">
         <a href="rules/rulebook.html" target="_blank" rel="noopener">Full rulebook (print-friendly)</a>
@@ -109,7 +109,7 @@
     <dialog id="trophy-dialog" class="trophy-dialog">
       <h2>Choose a trophy</h2>
       <p id="trophy-prompt" class="trophy-prompt">
-        Your Block covered these enemy siege monsters. Pick <strong>one</strong> for your Stash (value = monster rank).
+        Your Block covered these enemy siege monsters. Pick <strong>one</strong> to gain resources (⌊monster rank/2⌋).
       </p>
       <div id="trophy-choices" class="trophy-choices"></div>
     </dialog>
