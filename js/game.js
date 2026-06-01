@@ -29,17 +29,17 @@ import {
   addResources,
   offColorResourceGain,
   trophyResourceGain,
-  RED_DEPTH_EDGE_PER_CARD,
   isCalamityRound,
   isCalamityTrick,
   livingPool,
   markPlayedThisRound,
   maxTricks,
-  benchCost,
+  redCullFromVisitKey,
+  redCullCount,
+  applyRedCullToCooldown,
   payStash,
   recyclePaid,
   rotateRoundCooldown,
-  returnBenchedToReserve,
   roundEnds,
   scaleCombat,
   scaledBuff,
@@ -49,8 +49,6 @@ import {
   stashTotals,
 } from "./rules.js";
 import {
-  benchCardById,
-  resumeArmoryDraftAfterBench,
   startArmoryDraft,
 } from "./armoryDraft.js";
 import {
@@ -87,10 +85,6 @@ function makeTeam(id, deck, hp) {
     activeBuffs: new Set(),
     skipBlueDeal: false,
     marchTax: false,
-    pendingRedDepthEdge: 0,
-    activeRedDepthEdge: 0,
-    redDepthSiegeUsed: false,
-    redDepthDefenseUsed: false,
     warDrumsUsed: false,
     boilingOilUsed: false,
     siegeBreakerUsed: false,
@@ -232,10 +226,6 @@ export function dealRound(game) {
     t.activeBuffs = new Set(t.pendingBuffs);
     t.pendingBuffs = new Set();
     t.sallyGate = t.activeBuffs.has("sally_gate");
-    t.activeRedDepthEdge = t.pendingRedDepthEdge || 0;
-    t.pendingRedDepthEdge = 0;
-    t.redDepthSiegeUsed = false;
-    t.redDepthDefenseUsed = false;
     const plys = teamPlayers(game, t.id);
     const needed = hs * plys.length;
     let pool = livingPool(t, game.cooldownMechanic);
@@ -270,15 +260,6 @@ export function dealRound(game) {
         `${t.id === 0 ? "Your team" : "Enemies"}: ${resting} card${resting === 1 ? "" : "s"} on cooldown (not in this deal).`,
       );
     }
-    const benchedN = t.benched?.length ?? 0;
-    if (benchedN > 0) {
-      game.log.push(
-        `${t.id === 0 ? "Your team" : "Enemies"}: ${benchedN} benched card${benchedN === 1 ? "" : "s"} skip this deal.`,
-      );
-    }
-  }
-  for (const t of game.teams) {
-    returnBenchedToReserve(t);
   }
   const calamity = isCalamityRound(game.round) ? " · Calamity last trick" : "";
   game.log.push(`Round ${game.round} — dealt ${hs} cards each (max ${game.maxTricks} tricks)${calamity}.`);
@@ -374,10 +355,6 @@ function resolveTrick(game, plays) {
       st.siegeBreakerUsed = true;
     }
   }
-  if (!st.redDepthSiegeUsed && (st.activeRedDepthEdge || 0) > 0) {
-    assault += st.activeRedDepthEdge;
-    st.redDepthSiegeUsed = true;
-  }
   if (sigilEliteDefense) {
     if (dt.activeBuffs.has("boiling_oil")) dt.boilingOilUsed = true;
     if (dt.activeBuffs.has("iron_curtain")) dt.ironCurtainUsed = true;
@@ -390,10 +367,6 @@ function resolveTrick(game, plays) {
       block += scaledBuff(FINISHER_BASE, rn);
       dt.ironCurtainUsed = true;
     }
-  }
-  if (!dt.redDepthDefenseUsed && (dt.activeRedDepthEdge || 0) > 0) {
-    block += dt.activeRedDepthEdge;
-    dt.redDepthDefenseUsed = true;
   }
 
   let damage = Math.max(0, assault - block);
@@ -805,13 +778,17 @@ export function buyArmoryItem(game, key, permanentColor = null) {
   }
 
   if (VISIT_COSTS[key]) {
-    if (key.startsWith("bench") && game.humanBenchBuys >= 1) {
-      return { ok: false, msg: "Max one Bench per visit." };
+    if (key.startsWith("red_cull") && game.humanBenchBuys >= 1) {
+      return { ok: false, msg: "Max one Red depth tradeoff per visit." };
     }
     const cost = VISIT_COSTS[key];
     if (!canAffordTeam(team, cost)) return { ok: false, msg: "Cannot afford." };
-    if (key === "bench_1" && team.reserve.length < 1) return { ok: false, msg: "Reserve empty." };
-    if (key === "bench_2" && team.reserve.length < 2) return { ok: false, msg: "Reserve too small." };
+    if (key.startsWith("red_cull")) {
+      const cull = redCullFromVisitKey(key);
+      if (redCullCount(team, cull) <= 0) {
+        return { ok: false, msg: "No matching reserve cards to cool." };
+      }
+    }
     const paid = payStash(team, cost);
     if (!paid) return { ok: false, msg: "Payment failed." };
     if (key === "repair") {
@@ -821,8 +798,14 @@ export function buyArmoryItem(game, key, permanentColor = null) {
       recordHumanArmoryBuy(game, key);
       return { ok: true };
     }
-    if (key.startsWith("bench")) {
-      return { ok: false, msg: "Choose reserve cards to bench.", needsBenchPick: true, benchKey: key };
+    if (key.startsWith("red_cull")) {
+      const cull = redCullFromVisitKey(key);
+      const cooled = applyRedCullToCooldown(team, cull);
+      game.humanBenchBuys = (game.humanBenchBuys || 0) + 1;
+      game.humanBuysLeft -= 1;
+      game.log.push(`You cooled ${cooled} low reserve card(s) for next-deal depth tradeoff (${key}).`);
+      recordHumanArmoryBuy(game, key, { cooled });
+      return { ok: true };
     }
   }
 
@@ -846,78 +829,6 @@ export function buyArmoryItem(game, key, permanentColor = null) {
 function canAffordTeam(team, cost) {
   const t = stashTotals(team);
   return ["green", "blue", "red", "yellow"].every((c) => t[c] >= (cost[c] || 0));
-}
-
-/** Validate Bench purchase (no payment yet). */
-export function validateBenchPurchase(game, key, teamId = 0) {
-  const team = game.teams[teamId];
-  if (game.phase !== "armory") return { ok: false, msg: "Not at Armory." };
-  const benchBuys = game.armoryDraft?.teamBenchBuys?.[teamId] ?? game.humanBenchBuys ?? 0;
-  if (key.startsWith("bench") && benchBuys >= 1) {
-    return { ok: false, msg: "Max one Bench per visit." };
-  }
-  const cost = VISIT_COSTS[key];
-  if (!cost) return { ok: false, msg: "Unknown Bench." };
-  if (!canAffordTeam(team, cost)) return { ok: false, msg: "Cannot afford." };
-  const need = key === "bench_2" ? 2 : 1;
-  if (team.reserve.length < need) {
-    return { ok: false, msg: need === 2 ? "Reserve too small." : "Reserve empty." };
-  }
-  return { ok: true, count: need, cost };
-}
-
-/** Pay for Bench — cards skip next deal, then return to reserve top. */
-export function completeBenchPurchase(game, key, cardIds, teamId = 0) {
-  const v = validateBenchPurchase(game, key, teamId);
-  if (!v.ok) return v;
-  const team = game.teams[teamId];
-  const need = v.count;
-  const ids = [...new Set(cardIds)];
-  if (ids.length !== need) {
-    return { ok: false, msg: `Select exactly ${need} card${need === 1 ? "" : "s"}.` };
-  }
-  for (const id of ids) {
-    if (!team.reserve.some((c) => c.id === id)) {
-      return { ok: false, msg: "Card not in reserve." };
-    }
-  }
-
-  const pb = game.pendingBench;
-  const cost = pb?.draftChoice?.bench ? benchCost(pb.draftChoice.bench) : v.cost;
-  const paid = payStash(team, cost);
-  if (!paid) return { ok: false, msg: "Payment failed." };
-  for (const id of ids) benchCardById(team, id);
-  team.pendingRedDepthEdge = (team.pendingRedDepthEdge || 0) + ids.length * RED_DEPTH_EDGE_PER_CARD;
-
-  if (game.armoryDraft?.teamBenchBuys) {
-    game.armoryDraft.teamBenchBuys[teamId] += 1;
-    const labels = ids
-      .map((id) => {
-        const c = team.deck.find((x) => x.id === id) || team.benched.find((x) => x.id === id);
-        return c ? cardLabel(c, true) : id;
-      })
-      .join(", ");
-    game.log.push(
-      `You cooled ${labels} (${key}) — next round reserve depth drops, but +${ids.length * RED_DEPTH_EDGE_PER_CARD} first-siege and calamity block.`,
-    );
-    recordHumanArmoryBuy(game, key, { benched_ids: ids });
-    resumeArmoryDraftAfterBench(game);
-    return { ok: true };
-  }
-
-  game.humanBenchBuys = (game.humanBenchBuys || 0) + 1;
-  game.humanBuysLeft -= 1;
-  const labels = ids
-    .map((id) => {
-      const c = team.deck.find((x) => x.id === id) || team.benched.find((x) => x.id === id);
-      return c ? cardLabel(c, true) : id;
-    })
-    .join(", ");
-  game.log.push(
-    `You cooled ${labels} — skip next deal; +${ids.length * RED_DEPTH_EDGE_PER_CARD} first-siege and calamity block (${key}).`,
-  );
-  recordHumanArmoryBuy(game, key, { benched_ids: ids });
-  return { ok: true };
 }
 
 export function skipArmory(game) {

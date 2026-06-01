@@ -12,6 +12,10 @@ import {
   ROUND_COSTS,
   ROUND_MIN,
   VISIT_COSTS,
+  redCullCount,
+  redCullCost,
+  applyRedCullToCooldown,
+  redCullFromVisitKey,
   assaultValue,
   blockValue,
   canAfford,
@@ -424,12 +428,15 @@ function armoryActionScore(game, team, teamId, key) {
     return 12;
   }
 
-  if (key === "bench_1" || key === "bench_2") {
-    const n = key === "bench_2" ? 2 : 1;
-    if (team.reserve.length < n) return -20;
-    if (team.reserve.length > 11) return 12;
-    if (team.reserve.length < CALAMITY_PREP_MIN_RESERVE && nextCal) return -20;
-    return 8;
+  if (key === "red_cull_1" || key === "red_cull_2" || key === "red_cull_both") {
+    const cull = redCullFromVisitKey(key);
+    const n = redCullCount(team, cull);
+    if (n <= 0) return -20;
+    let s = 6 + Math.min(12, n * 2);
+    if (team.reserve.length < CALAMITY_PREP_MIN_RESERVE && nextCal) s -= 20;
+    else if (nextCal && key === "red_cull_both") s -= 12;
+    else if (nextCal && key === "red_cull_2") s -= 6;
+    return s;
   }
 
   if (key === "boiling_oil") {
@@ -473,13 +480,15 @@ export function scoreArmoryWorkerPick(game, team, teamId, slot, choice) {
     if (nextCal && hp < max * 0.65) s += 25;
     return s - costG * 4;
   }
-  if (slot === "red" && choice?.bench) {
-    const n = choice.bench;
-    if (team.reserve.length < n) return -20;
-    let s = 10 + n * 10;
-    if (team.reserve.length > 11) s += 12;
-    if (team.reserve.length < CALAMITY_PREP_MIN_RESERVE && nextCal) s -= 25;
-    const costR = 3 * 2.35 ** (n - 1);
+  if (slot === "red" && choice?.cull) {
+    const n = redCullCount(team, choice.cull);
+    if (n <= 0) return -20;
+    let s = 8 + Math.min(14, n * 2);
+    if (team.reserve.length < CALAMITY_PREP_MIN_RESERVE && nextCal) s -= 22;
+    else if (nextCal && choice.cull.mode === "both") s -= 14;
+    else if (nextCal && choice.cull.value === 2) s -= 8;
+    const cost = redCullCost(choice.cull.value, choice.cull.mode);
+    const costR = cost.red || 0;
     return s - costR * 2.5;
   }
   if (slot === "yellow" && choice?.tier) {
@@ -514,8 +523,18 @@ function armoryCandidates(game, team, style) {
 
   if (hp < max * 0.5 && (t.green || 0) >= 3) list.push("repair");
   if (hp < max * 0.3 && (t.green || 0) >= 3) list.push("repair");
-  if (team.reserve.length > 10 && (t.red || 0) >= 3) list.push("bench_1");
-  if (team.reserve.length > 12 && (t.red || 0) >= 7) list.push("bench_2");
+  if (team.reserve.length > 10 && (t.red || 0) >= 3) {
+    const cull = { value: 1, mode: "band" };
+    if (redCullCount(team, cull) > 0) list.push("red_cull_1");
+  }
+  if (team.reserve.length > 10 && (t.red || 0) >= 7) {
+    const cull = { value: 2, mode: "band" };
+    if (redCullCount(team, cull) > 0) list.push("red_cull_2");
+  }
+  if (team.reserve.length > 12 && (t.red || 0) >= 11) {
+    const cull = { value: 2, mode: "both" };
+    if (redCullCount(team, cull) > 0) list.push("red_cull_both");
+  }
 
   if (canAfford(team, ROUND_COSTS.boiling_oil) && (ROUND_MIN.boiling_oil || 1) <= round) {
     list.push("boiling_oil");
@@ -546,17 +565,10 @@ export function pickPermanentColor(team) {
   return dominantDeckColor(team);
 }
 
-function benchReserveSmart(team, n) {
-  const sorted = [...team.reserve].sort((a, b) => a.tr - b.tr || a.mr - b.mr);
-  for (let i = 0; i < n && sorted.length; i++) {
-    const c = sorted.shift();
-    const idx = team.reserve.findIndex((x) => x.id === c.id);
-    if (idx >= 0) {
-      const card = team.reserve.splice(idx, 1)[0];
-      if (!team.benched) team.benched = [];
-      team.benched.push(card);
-    }
-  }
+function aiRedCullFromReserve(team, key) {
+  const cull = redCullFromVisitKey(key);
+  if (!cull) return 0;
+  return applyRedCullToCooldown(team, cull);
 }
 
 export function runArmoryAI(game, teamId) {
@@ -595,19 +607,22 @@ export function runArmoryAI(game, teamId) {
   const tryVisit = (key) => {
     const cost = VISIT_COSTS[key];
     if (!cost || buys >= BUYS_PER_ARMORY) return false;
-    if (key.startsWith("bench") && benchBuys >= 1) return false;
+    if (key.startsWith("red_cull") && benchBuys >= 1) return false;
     if (!canAfford(team, cost)) return false;
     if (key === "repair" && greenAfterPay(team, cost) < 0 && team.castleHp > team.castleMax * 0.6) {
       return false;
     }
-    if (key === "bench_1" && team.reserve.length < 1) return false;
-    if (key === "bench_2" && team.reserve.length < 2) return false;
+    if (key.startsWith("red_cull")) {
+      const cull = redCullFromVisitKey(key);
+      if (redCullCount(team, cull) <= 0) return false;
+    }
     const paid = payStash(team, cost);
     if (!paid) return false;
     if (key === "repair") team.castleHp = Math.min(team.castleMax, team.castleHp + 2);
-    else if (key === "bench_1") benchReserveSmart(team, 1);
-    else if (key === "bench_2") benchReserveSmart(team, 2);
-    if (key.startsWith("bench")) benchBuys++;
+    else if (key.startsWith("red_cull")) {
+      aiRedCullFromReserve(team, key);
+      benchBuys++;
+    }
     buys++;
     log.push(key);
     return true;

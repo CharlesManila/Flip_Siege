@@ -12,9 +12,7 @@ import {
   BENCH_MAX_PER_ARMORY,
   PERMANENT_COSTS,
   PERMANENT_UNLOCK_ROUND,
-  RED_DEPTH_EDGE_PER_CARD,
   armoryPickOrder,
-  benchCost,
   blueDefenseTierCost,
   canAfford,
   fourSlotBuffKey,
@@ -22,6 +20,8 @@ import {
   legalFourSlotChoices,
   payStash,
   repairCost,
+  redCullCost,
+  applyRedCullToCooldown,
   resourceTotals,
   yellowAttackTierCost,
 } from "./rules.js";
@@ -30,7 +30,6 @@ import { recordHumanArmoryBuy } from "./playLog.js";
 export function startArmoryDraft(game, onComplete) {
   game.phase = "armory";
   game.subphase = "armory_draft";
-  game.pendingBench = null;
   game.armoryOnComplete = onComplete;
   game.armoryDraft = {
     pickOrder: armoryPickOrder(game),
@@ -101,21 +100,20 @@ export function applyFourSlotPurchase(game, teamId, slot, choice, rng) {
   const d = game.armoryDraft;
   let cost = null;
   if (slot === "green" && choice?.heal) cost = repairCost(choice.heal);
-  else if (slot === "red" && choice?.bench) cost = benchCost(choice.bench);
+  else if (slot === "red" && choice?.cull) cost = redCullCost(choice.cull.value, choice.cull.mode);
   else if (slot === "yellow" && choice?.tier) cost = yellowAttackTierCost(choice.tier, game.round);
   else if (slot === "blue" && choice?.tier) cost = blueDefenseTierCost(choice.tier, game.round);
   if (!cost || !canAfford(team, cost)) return false;
-  if (slot === "red" && (choice?.bench || 0) > team.reserve.length) return false;
   if (slot === "red" && d.teamBenchBuys[teamId] >= BENCH_MAX_PER_ARMORY) return false;
 
   if (!payStash(team, cost)) return false;
 
   if (slot === "green" && choice?.heal) {
     team.castleHp = Math.min(team.castleMax, team.castleHp + choice.heal);
-  } else if (slot === "red" && choice?.bench) {
-    benchReserveSmart(team, choice.bench, rng);
+  } else if (slot === "red" && choice?.cull) {
+    const cooled = applyRedCullToCooldown(team, choice.cull);
+    if (cooled <= 0) return false;
     d.teamBenchBuys[teamId] += 1;
-    team.pendingRedDepthEdge = (team.pendingRedDepthEdge || 0) + choice.bench * RED_DEPTH_EDGE_PER_CARD;
   } else {
     const buff = fourSlotBuffKey(slot, choice);
     if (buff) team.pendingBuffs.add(buff);
@@ -153,7 +151,10 @@ function tryPermanentDuringDraft(game, teamId, rng) {
 function formatPickLabel(slot, choice) {
   if (!choice) return "";
   if (slot === "green" && choice.heal) return `+${choice.heal} HP`;
-  if (slot === "red" && choice.bench) return `bench ${choice.bench}`;
+  if (slot === "red" && choice.cull) {
+    if (choice.cull.mode === "both") return "cool ranks 1-2 (M/T)";
+    return `cool rank ${choice.cull.value} (M/T)`;
+  }
   if (slot === "yellow" && choice.tier) return choice.tier === "high" ? "Siege Breaker" : "War Drums";
   if (slot === "blue" && choice.tier) return choice.tier === "high" ? "Iron Curtain" : "Boiling Oil";
   return "";
@@ -257,20 +258,6 @@ export function pickArmoryWorker(game, slot, choice) {
   const match = legal.find((c) => JSON.stringify(c) === JSON.stringify(choice));
   if (!match) return { ok: false, msg: "Illegal purchase." };
 
-  if (slot === "red" && choice?.bench) {
-    const key = choice.bench === 2 ? "bench_2" : "bench_1";
-    game.pendingBench = {
-      key,
-      count: choice.bench,
-      selected: new Set(),
-      teamId: player.teamId,
-      draftSlot: slot,
-      draftChoice: choice,
-      draftPlayerId: pid,
-    };
-    return { ok: true, needsBenchPick: true };
-  }
-
   const old = player.workerSlot;
   placeWorker(game, player, slot);
   const ok = applyFourSlotPurchase(game, player.teamId, slot, choice, game.rng);
@@ -284,15 +271,4 @@ export function pickArmoryWorker(game, slot, choice) {
   game.armoryDraft.pickIndex += 1;
   advanceArmoryDraft(game, true);
   return { ok: true };
-}
-
-export function resumeArmoryDraftAfterBench(game) {
-  const pb = game.pendingBench;
-  if (!pb?.draftSlot) return;
-  const pid = pb.draftPlayerId;
-  const player = game.players[pid];
-  placeWorker(game, player, pb.draftSlot);
-  game.pendingBench = null;
-  game.armoryDraft.pickIndex += 1;
-  advanceArmoryDraft(game, true);
 }

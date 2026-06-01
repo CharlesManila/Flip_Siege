@@ -7,7 +7,6 @@ import {
 import {
   advanceAI,
   chooseTrophy,
-  completeBenchPurchase,
   advanceCalamityStep,
   humanMustPlay,
   needsHumanTrophyPick,
@@ -26,7 +25,6 @@ let tickTimer = null;
 
 function closeDialogs() {
   document.getElementById("trophy-dialog")?.close();
-  document.getElementById("scrap-dialog")?.close();
   document.getElementById("rules-dialog")?.close();
 }
 
@@ -125,8 +123,6 @@ function render() {
       return r;
     },
     onTrophy: onTrophy,
-    onBenchConfirm: onBenchConfirm,
-    onBenchCancel: onBenchCancel,
     onCalamityContinue: () => {
       if (!game) return;
       advanceCalamityStep(game);
@@ -150,23 +146,6 @@ function afterHumanPlay() {
     render();
   }
   if (game.phase !== "trophy_pick") scheduleAI();
-}
-
-function onBenchConfirm(key, cardIds) {
-  const teamId = game.pendingBench?.teamId ?? 0;
-  const r = completeBenchPurchase(game, key, cardIds, teamId);
-  if (!r.ok) {
-    alert(r.msg);
-    return false;
-  }
-  render();
-  scheduleAI();
-  return true;
-}
-
-function onBenchCancel() {
-  game.pendingBench = null;
-  render();
 }
 
 function onPlayCard(cardId) {

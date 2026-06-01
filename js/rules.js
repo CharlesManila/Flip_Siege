@@ -26,8 +26,6 @@ export const RED_BENCH_MULT = 2.35;
 export const MAX_REPAIR_PER_VISIT = 6;
 export const MAX_BENCH_PER_VISIT = 3;
 export const FOUR_SLOT_PICK_THRESHOLD = 8;
-/** Red bench edge gained per reserved card sent to cooldown. */
-export const RED_DEPTH_EDGE_PER_CARD = 2;
 
 /** Off-color play earns floor(rank/2) resources (1 → 0, 10 → 5). */
 export function offColorResourceGain(faceValue) {
@@ -68,6 +66,42 @@ export function repairCost(heal) {
 export function benchCost(n) {
   const r = Math.max(1, Math.round(RED_BENCH_BASE * RED_BENCH_MULT ** (n - 1)));
   return { red: r };
+}
+
+export function redCullCost(value, mode) {
+  if (value === 1 && mode === "band") return { red: 3 };
+  if (value === 2 && mode === "band") return { red: 7 };
+  return { red: 11 };
+}
+
+export function redCullMatches(card, cull) {
+  if (!cull) return false;
+  const { value, mode } = cull;
+  if (mode === "both") return card.mr <= 2 || card.tr <= 2;
+  if (value === 1) return card.mr === 1 || card.tr === 1;
+  return card.mr === 2 || card.tr === 2;
+}
+
+export function redCullCount(team, cull) {
+  return (team.reserve || []).filter((c) => redCullMatches(c, cull)).length;
+}
+
+export function applyRedCullToCooldown(team, cull) {
+  let cooled = 0;
+  if (!team.cooldownIds) team.cooldownIds = new Set();
+  for (const c of team.reserve || []) {
+    if (!redCullMatches(c, cull)) continue;
+    team.cooldownIds.add(c.id);
+    cooled++;
+  }
+  return cooled;
+}
+
+export function redCullFromVisitKey(key) {
+  if (key === "red_cull_1") return { value: 1, mode: "band" };
+  if (key === "red_cull_2") return { value: 2, mode: "band" };
+  if (key === "red_cull_both") return { value: 2, mode: "both" };
+  return null;
 }
 
 export function maxRepairHeal(team) {
@@ -138,8 +172,14 @@ export function legalFourSlotChoices(game, team, slot) {
       if (canAfford(team, cost)) out.push({ heal });
     }
   } else if (slot === "red") {
-    for (let n = 1; n <= Math.min(MAX_BENCH_PER_VISIT, team.reserve.length); n++) {
-      if (canAfford(team, benchCost(n))) out.push({ bench: n });
+    const options = [
+      { cull: { value: 1, mode: "band" } },
+      { cull: { value: 2, mode: "band" } },
+      { cull: { value: 2, mode: "both" } },
+    ];
+    for (const o of options) {
+      if (redCullCount(team, o.cull) <= 0) continue;
+      if (canAfford(team, redCullCost(o.cull.value, o.cull.mode))) out.push(o);
     }
   } else if (slot === "yellow") {
     for (const tier of ["low", "high"]) {
@@ -169,11 +209,12 @@ export function addResources(team, color, amount, source) {
   return gain;
 }
 
-/** Legacy 2-buy visit list (bench still used via four-slot). */
+/** Legacy 2-buy visit list (four-slot worker draft is official). */
 export const VISIT_COSTS = {
   repair: { green: 3 },
-  bench_1: { red: 3 },
-  bench_2: { red: 7 },
+  red_cull_1: { red: 3 },
+  red_cull_2: { red: 7 },
+  red_cull_both: { red: 11 },
 };
 
 export const ROUND_COSTS = {
@@ -206,7 +247,7 @@ export const ROUND_LABELS = {
 export const ROUND_DESCRIPTIONS = {
   war_drums: "+2 Assault on your first siege trick (+ combat tier round 5+).",
   boiling_oil: "+2 Block on your first defense trick (+ tier round 5+).",
-  march_tax: "+1 Stash value on each off-color your team plays.",
+  march_tax: "+1 resource on each off-color your team plays.",
   sally_gate: "On your first lead, led color may differ from your lead monster.",
   siege_breaker: "+9 Assault on first siege trick (+ tier). Unlocks round 5 Armory.",
   iron_curtain: "+9 Block on first defense trick (+ tier). Unlocks round 5 Armory.",
@@ -239,23 +280,24 @@ export const PERMANENT_DESCRIPTIONS = {
 
 export const VISIT_LABELS = {
   repair: "Repair castle",
-  bench_1: "Bench reserve (1 card)",
-  bench_2: "Bench reserve (2 cards)",
+  red_cull_1: "Red depth — cool rank 1",
+  red_cull_2: "Red depth — cool rank 2",
+  red_cull_both: "Red depth — cool ranks 1 & 2",
 };
 
 export const VISIT_DESCRIPTIONS = {
   repair: "Heal +2 HP now (cannot exceed starting HP).",
-  bench_1:
-    "Bench 1 reserve card: it skips the next deal only, then returns to the top of your reserve (uses 1 purchase).",
-  bench_2:
-    "Bench 2 reserve cards: they skip the next deal only, then return to reserve top (uses 1 purchase).",
+  red_cull_1: "All reserve cards with monster or tower rank 1 skip next deal (lower depth prep, better deal quality).",
+  red_cull_2: "All reserve cards with monster or tower rank 2 skip next deal.",
+  red_cull_both: "All reserve cards with rank 1 or 2 skip next deal (strongest tradeoff).",
 };
 
 /** UI badge: how long the effect lasts. */
 export const SHOP_DURATION = {
   repair: "instant",
-  bench_1: "instant",
-  bench_2: "instant",
+  red_cull_1: "instant",
+  red_cull_2: "instant",
+  red_cull_both: "instant",
   war_drums: "round",
   boiling_oil: "round",
   march_tax: "round",

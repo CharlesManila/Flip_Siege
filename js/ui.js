@@ -369,7 +369,7 @@ function renderTrophyPicker(game, hooks) {
   if (prompt) {
     prompt.innerHTML = `Several enemy monsters qualify, but your Block (<strong>${block}</strong>) is below resolved Assault (<strong>${assault}</strong>). 
       Pick <strong>one</strong> trophy (each below: led-color Assault contributor with <strong>monster rank ≤ Block</strong>). 
-      Stash value = <strong>monster rank</strong>; tower rank matters when you defend with that color later.`;
+      Resource gain = <strong>⌊monster rank / 2⌋</strong> in that card's color.`;
   }
 
   choices.innerHTML = "";
@@ -384,7 +384,7 @@ function renderTrophyPicker(game, hooks) {
     stats.innerHTML = `
         <div>Siege: ${m.monster} <strong>${card.mr}</strong> (A${assaultContrib})</div>
         <div>Tower: ${m.tower} <strong>${card.tr}</strong></div>
-        <div class="trophy-stash">Stash value: ${card.mr}</div>`;
+        <div class="trophy-stash">Resources: ⌊${card.mr}/2⌋ = ${Math.floor(card.mr / 2)}</div>`;
     btn.appendChild(stats);
     btn.onclick = () => {
       if (hooks.onTrophy?.(card.id)) dlg.close();
@@ -415,81 +415,6 @@ function openTrophyDialog(dlg) {
   openModalDialog(dlg);
 }
 
-function renderBenchPicker(game, hooks) {
-  const dlg = document.getElementById("scrap-dialog");
-  const choices = document.getElementById("scrap-choices");
-  const confirmBtn = document.getElementById("btn-scrap-confirm");
-  if (!dlg || !choices || !game.pendingBench) return;
-
-  const { key, count, selected } = game.pendingBench;
-  const team = game.teams[0];
-  const cost = VISIT_COSTS[key];
-  const prompt = document.getElementById("scrap-prompt");
-  if (prompt) {
-    prompt.innerHTML = `Pay <strong>${escapeHtml(formatCost(cost))}</strong> to send
-      <strong>${count}</strong> card${count === 1 ? "" : "s"} from your <strong>reserve</strong> to <strong>next-deal cooldown</strong>
-      (${team.reserve.length} in reserve). Tradeoff: lower next reserve depth, stronger first siege and calamity block next round. Click to select, then confirm.`;
-  }
-
-  const updateConfirm = () => {
-    if (confirmBtn) {
-      confirmBtn.disabled = selected.size !== count;
-      confirmBtn.textContent =
-        selected.size === count
-          ? `Confirm cooldown (${count})`
-          : `Select ${count - selected.size} more`;
-    }
-  };
-
-  choices.innerHTML = "";
-  for (const card of team.reserve) {
-    const m = COLOR_META[card.color];
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = `scrap-choice color-${card.color}${selected.has(card.id) ? " selected" : ""}`;
-    btn.appendChild(renderCard(card, { siege: true, small: true, asButton: false }));
-    const stats = document.createElement("div");
-    stats.className = "scrap-choice-stats";
-    stats.innerHTML = `
-        <div>${m.monster} <strong>${card.mr}</strong> / ${m.tower} <strong>${card.tr}</strong></div>
-        <div><code>${escapeHtml(card.id)}</code></div>`;
-    btn.appendChild(stats);
-    btn.onclick = () => {
-      if (selected.has(card.id)) selected.delete(card.id);
-      else if (selected.size < count) selected.add(card.id);
-      for (const el of choices.querySelectorAll(".scrap-choice")) {
-        const id = el.dataset.cardId;
-        el.classList.toggle("selected", selected.has(id));
-      }
-      updateConfirm();
-    };
-    btn.dataset.cardId = card.id;
-    choices.appendChild(btn);
-  }
-
-  if (confirmBtn) {
-    confirmBtn.onclick = () => {
-      if (selected.size !== count) return;
-      if (hooks.onBenchConfirm?.(key, [...selected])) {
-        game.pendingBench = null;
-        dlg.close();
-      }
-    };
-  }
-
-  const cancelBtn = document.getElementById("btn-scrap-cancel");
-  if (cancelBtn) {
-    cancelBtn.onclick = () => {
-      game.pendingBench = null;
-      dlg.close();
-      hooks.onBenchCancel?.();
-    };
-  }
-
-  updateConfirm();
-  if (!dlg.open) openModalDialog(dlg);
-}
-
 export function renderBoard(game, hooks) {
   const board = $("#board");
   if (!board || !game) return;
@@ -501,8 +426,6 @@ export function renderBoard(game, hooks) {
 
   const trophyDlg = document.getElementById("trophy-dialog");
   if (game.phase !== "trophy_pick" && trophyDlg?.open) trophyDlg.close();
-  const scrapDlg = document.getElementById("scrap-dialog");
-  if (!game.pendingBench && scrapDlg?.open) scrapDlg.close();
 
   $("#round-label").textContent = `Round ${game.round}`;
   $("#siege-label").textContent =
@@ -594,11 +517,7 @@ export function renderBoard(game, hooks) {
     $("#btn-end-armory").classList.add("hidden");
     $("#btn-play-again")?.classList.remove("hidden");
   } else if (game.phase === "armory") {
-    if (game.pendingBench) {
-      prompt.textContent = `Choose ${game.pendingBench.count} reserve card(s) to send to cooldown.`;
-      renderBenchPicker(game, hooks);
-      $("#armory-panel").classList.remove("hidden");
-    } else if (game.subphase === "armory_draft") {
+    if (game.subphase === "armory_draft") {
       renderArmoryDraft(game, hooks);
     } else {
       prompt.textContent = `Armory — ${game.humanBuysLeft} purchase(s) left.`;
@@ -661,7 +580,7 @@ function renderArmoryDraft(game, hooks) {
   const prompt = $("#prompt");
   if (prompt) {
     if (human) {
-      prompt.textContent = `Your worker pick (${human.name}). Place on a station or Pass. Cannot revisit your last color station (Vault is always allowed).`;
+      prompt.textContent = `Your worker pick (${human.name}). Place on a station or Pass. Cannot revisit your last color station.`;
     } else if (player) {
       prompt.textContent = `Waiting — ${player.name} is picking…`;
     } else {
@@ -750,10 +669,13 @@ function showSlotChoices(game, hooks, slot, player) {
       label = `Repair +${choice.heal} HP`;
       cost = repairCost(choice.heal);
       desc = "Heals immediately (max +6).";
-    } else if (slot === "red" && choice.bench) {
-      label = `Cool ${choice.bench} reserve card(s)`;
-      cost = benchCost(choice.bench);
-      desc = "Send reserve cards to next-deal cooldown; gain first-siege and calamity defense edge next round.";
+    } else if (slot === "red" && choice.cull) {
+      const { value, mode } = choice.cull;
+      if (mode === "both") label = "Cool reserve with rank 1 or 2 (monster or tower)";
+      else if (value === 1) label = "Cool reserve with rank 1 (monster or tower)";
+      else label = "Cool reserve with rank 2 (monster or tower)";
+      cost = value === 1 ? { red: 3 } : (mode === "both" ? { red: 11 } : { red: 7 });
+      desc = "Removes low cards from next deal (better quality), but reduces next reserve depth for calamity prep.";
     } else if (slot === "yellow" && choice.tier) {
       label = choice.tier === "high" ? "Siege Breaker" : "War Drums";
       cost = yellowAttackTierCost(choice.tier, game.round);
@@ -766,9 +688,7 @@ function showSlotChoices(game, hooks, slot, player) {
     btn.innerHTML = `<span>${escapeHtml(label)}</span><span class="shop-item-cost">${escapeHtml(formatCost(cost))}</span>${desc ? `<small class="armory-choice-desc">${escapeHtml(desc)}</small>` : ""}`;
     btn.onclick = () => {
       const r = hooks.onArmoryWorker?.(slot, choice);
-      if (r?.needsBenchPick) {
-        choicesEl.classList.add("hidden");
-      } else if (r?.ok) {
+      if (r?.ok) {
         choicesEl.classList.add("hidden");
       } else if (r?.msg) alert(r.msg);
     };
@@ -846,17 +766,17 @@ function renderArmory(game, hooks) {
   };
 
   const { grid: visitGrid } = addSection(
-    "Visit — instant (green Stash)",
+    "Visit — instant (green resources)",
     "Happens immediately when you buy. Does not carry to the next round.",
   );
   for (const [k, cost] of Object.entries(VISIT_COSTS)) {
     let ok = canAfford(team, cost) && buysLeft > 0;
-    if (k.startsWith("bench") && game.humanBenchBuys >= 1) ok = false;
+    if (k.startsWith("red_cull") && game.humanBenchBuys >= 1) ok = false;
     addItem(visitGrid, k, VISIT_LABELS[k] || k, cost, ok, VISIT_DESCRIPTIONS[k]);
   }
 
   const { section: roundSection, grid: roundGrid } = addSection(
-    "Round buffs — next round only (blue Stash)",
+    "Round buffs — next round only (blue/yellow resources)",
     "Active during the upcoming round only (e.g. War Drums on your first siege trick). Cleared after that round.",
   );
   const lockedRound = [];

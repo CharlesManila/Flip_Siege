@@ -454,7 +454,7 @@
     <table>
       <thead><tr><th>Tier</th><th>Pay with</th><th>Examples</th></tr></thead>
       <tbody>
-        <tr><td>Visit (instant)</td><td><strong>Green</strong> / <strong>Red</strong></td><td>Repair 3G · Bench 1 = 3R · Bench 2 = 7R</td></tr>
+        <tr><td>Visit (instant)</td><td><strong>Green</strong> / <strong>Red</strong></td><td>Repair 3G · Red depth 3R / 7R / 11R</td></tr>
         <tr><td>Round (next round)</td><td><strong>Blue</strong> / <strong>Yellow</strong></td><td>War Drums 10Y · Boiling Oil 10B</td></tr>
         <tr><td>Finishers</td><td><strong>Blue</strong> / <strong>Yellow</strong> (round 5+)</td><td>Siege Breaker 18Y · Iron Curtain 18B</td></tr>
         <tr><td>Permanent (once)</td><td><strong>All four colors</strong></td><td>See §13 (unlock round 4 Armory)</td></tr>
@@ -485,7 +485,7 @@
       <li><strong>Green</strong> — repair (scaled green cost, choose HP healed).</li>
       <li><strong>Yellow</strong> — War Drums or Siege Breaker (round 5+).</li>
       <li><strong>Blue</strong> — Boiling Oil or Iron Curtain (round 5+). <strong>One blue worker globally</strong> per draft.</li>
-      <li><strong>Red</strong> — send 1–3 reserve cards to <strong>next-deal cooldown</strong> (you choose which). <strong>One red worker globally</strong> per draft.</li>
+      <li><strong>Red</strong> — cool low reserve cards (rank 1, rank 2, or both) into <strong>next-deal cooldown</strong>. <strong>One red worker globally</strong> per draft.</li>
       <li><strong>No Vault station</strong> in the live game.</li>
       <li>Cannot return to the <strong>same color station</strong> you just left on your previous pick.</li>
       <li>Max <strong>one red depth tradeoff</strong> per team per Armory.</li>
@@ -507,10 +507,10 @@
         <tr><td>Green repair</td><td>4G ×2.2 per HP (max +6)</td><td>Heal now</td></tr>
         <tr><td>Yellow</td><td>10Y / 18Y</td><td>War Drums (r1+) / Siege Breaker (r5+)</td></tr>
         <tr><td>Blue</td><td>10B / 18B</td><td>Boiling Oil (r1+) / Iron Curtain (r5+)</td></tr>
-        <tr><td>Red depth tradeoff</td><td>3R / 7R / 16R</td><td>Send 1/2/3 reserve cards to next-deal cooldown; gain +2/+4/+6 first-siege Assault and calamity Block next round</td></tr>
+        <tr><td>Red depth tradeoff</td><td>3R / 7R / 11R</td><td>Cool reserve cards with rank-1, rank-2, or both (monster/tower) for next deal; this lowers depth prep but improves deal quality</td></tr>
       </tbody>
     </table>
-    <p><strong>Depth tradeoff:</strong> You weaken next reserve depth (harder calamity prep) in exchange for a stronger first siege and stronger calamity defense next round.</p>
+    <p><strong>Depth tradeoff:</strong> Cooling low cards improves your next deal quality but lowers reserve depth (weaker calamity prep block).</p>
     <p>Clear used round buffs at the start of the round after they apply.</p>
 
     <!-- ========== PERMANENTS ========== -->
@@ -556,7 +556,7 @@
     <p>After calamity resolves, the two flipped reserve monsters are <strong>not played</strong> — return them to the <strong>top</strong> of the same reserves. They do <strong>not</strong> enter card cooldown (only tower cards played from hand do).</p>
     <h3>Reserve prep</h3>
     <ul>
-      <li><strong>Prepared:</strong> After those flips, your reserve still has <strong>≥9 cards</strong> → bonus Block (+1 per card above 8, cap +7) plus add <strong>⅓</strong> of the best <strong>tower rank</strong> among your top 3 reserve cards.</li>
+      <li><strong>Prepared:</strong> After those flips, your reserve still has <strong>≥9 cards</strong> → depth bonus = <strong>reserve cards - 8</strong> (cap <strong>+7</strong>) plus add <strong>⅓</strong> of the best <strong>tower rank</strong> among your top 3 reserve cards.</li>
       <li><strong>Underprepared:</strong> Each card <strong>below 9</strong> in your reserve → <strong>+1</strong> extra damage; <strong>empty</strong> reserve → <strong>+5</strong> more.</li>
     </ul>
     <p>Keep reserve depth going into the last trick; don’t rely only on hand towers.</p>
@@ -583,7 +583,7 @@
       <li><strong>Deck exhaustion (optional):</strong> From round 6+, if any player has <strong>≤ half</strong> the round’s deal size in hand after a trick (e.g. ≤5 when deal is 10), the game ends — <strong>highest castle HP wins</strong>. Default tournament rules often <strong>skip</strong> this.</li>
     </ul>
     <h3>Short deal</h3>
-    <p>If the living pool cannot fill all hands (common with <strong>cooldown</strong>, purge, and benched cards), deal as many cards as possible from what exists. Some players may get fewer cards or zero.</p>
+    <p>If the living pool cannot fill all hands (common with <strong>cooldown</strong> and purge), deal as many cards as possible from what exists. Some players may get fewer cards or zero.</p>
 
     <!-- ========== FAQ ========== -->
     <h2 id="faq">16. FAQ &amp; edge cases</h2>
@@ -592,8 +592,8 @@
       <dd>Yes, if you have 2 purchases. Permanent uses one.</dd>
       <dt>Can I buy multiple Red depth tradeoffs in one visit?</dt>
       <dd>No. Max one Red purchase per team per Armory visit.</dd>
-      <dt>What if reserve is empty on Red?</dt>
-      <dd>You cannot buy Red. The purchase is illegal.</dd>
+      <dt>What if no rank-1/2 cards match in reserve on Red?</dt>
+      <dd>That Red option is unavailable. Pick a different band or pass.</dd>
       <dt>Does Purge remove cards currently in reserve/hand?</dt>
       <dd>Yes. Great Purge removes all 10 cards of that color from your deck state when it resolves.</dd>
       <dt>Can the enemy deal a card I “won” as a trophy?</dt>
@@ -657,7 +657,7 @@
       <div class="ref-card">
         <h3>Resource pay</h3>
         <ul style="margin:0;padding-left:1.1rem">
-          <li>Green: Repair 3 · Red: Depth 3 / 7 / 16</li>
+          <li>Green: Repair 3 · Red: Depth 3 / 7 / 11</li>
           <li>Blue: Drums/Oil 10 · Tax 12</li>
           <li>Gate 10 · Breaker/Curtain 14</li>
           <li>Overpay lost · 1 Red max/visit</li>
