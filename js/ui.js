@@ -15,10 +15,11 @@ import {
   VISIT_COSTS,
   VISIT_DESCRIPTIONS,
   VISIT_LABELS,
-  benchCost,
+  fourSlotChoiceCatalog,
+  fourSlotChoicePresentation,
+  fourSlotChoicePurchasable,
   canAfford,
   isSlotOccupiedForPlayer,
-  legalFourSlotChoices,
   repairCost,
   stashTotals,
   resourceTotal,
@@ -549,6 +550,27 @@ const SLOT_META = {
   red: { title: "Red — Depth Tradeoff", color: "red" },
 };
 
+function armoryDraftOpts(game, teamId) {
+  return {
+    redBenchUsed: (game.armoryDraft?.teamBenchBuys?.[teamId] ?? 0) >= 1,
+  };
+}
+
+function stationOptionsPreviewHtml(game, team, slot) {
+  const opts = armoryDraftOpts(game, team.id);
+  const lines = fourSlotChoiceCatalog(game, team, slot).map((choice) => {
+    const { label, cost } = fourSlotChoicePresentation(game, team, slot, choice);
+    const status = fourSlotChoicePurchasable(game, team, slot, choice, opts);
+    const costStr = formatCost(cost);
+    const note = status.ok ? "" : ` — ${status.reason}`;
+    const cls = status.ok ? "station-opt-ok" : "station-opt-muted";
+    return `<li class="${cls}"><span>${escapeHtml(label)}</span> <strong>${escapeHtml(costStr)}</strong>${escapeHtml(note)}</li>`;
+  });
+  return lines.length
+    ? `<ul class="station-options-preview">${lines.join("")}</ul>`
+    : `<p class="station-options-preview empty">No options at this station.</p>`;
+}
+
 function renderArmoryDraft(game, hooks) {
   const panel = $("#armory-panel");
   const board = $("#armory-draft-board");
@@ -609,7 +631,8 @@ function renderArmoryDraft(game, hooks) {
       (human.lastWorkerSlot === slot || isSlotOccupiedForPlayer(game, slot, human));
     cell.innerHTML = `
       <h4 class="station-title">${escapeHtml(meta.title)}</h4>
-      <p class="station-occupant">${escapeHtml(occText)}</p>`;
+      <p class="station-occupant">${escapeHtml(occText)}</p>
+      ${stationOptionsPreviewHtml(game, team, slot)}`;
     if (human && !blocked) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -652,46 +675,33 @@ function showSlotChoices(game, hooks, slot, player) {
   const choicesEl = $("#armory-slot-choices");
   if (!choicesEl) return;
   const team = game.teams[player.teamId];
-  const legal = legalFourSlotChoices(game, team, slot);
+  const opts = armoryDraftOpts(game, player.teamId);
+  const catalog = fourSlotChoiceCatalog(game, team, slot);
   choicesEl.classList.remove("hidden");
-  choicesEl.innerHTML = `<h4>${escapeHtml(SLOT_META[slot].title)} — choose</h4>`;
+  choicesEl.innerHTML = `<h4>${escapeHtml(SLOT_META[slot].title)} — choose</h4>
+    <p class="armory-hint">All tiers shown — save resources for a bigger buy next Armory, or take what you can afford now.</p>`;
   const grid = document.createElement("div");
   grid.className = "armory-choice-grid";
 
-  for (const choice of legal) {
+  for (const choice of catalog) {
+    const { label, cost, desc } = fourSlotChoicePresentation(game, team, slot, choice);
+    const status = fourSlotChoicePurchasable(game, team, slot, choice, opts);
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "armory-choice-btn";
-    let label = "";
-    let cost = {};
-    let desc = "";
-    if (slot === "green" && choice.heal) {
-      label = `Repair +${choice.heal} HP`;
-      cost = repairCost(choice.heal);
-      desc = "Heals immediately (max +6).";
-    } else if (slot === "red" && choice.cull) {
-      const { value, mode } = choice.cull;
-      if (mode === "both") label = "Cool reserve with rank 1 or 2 (monster or tower)";
-      else if (value === 1) label = "Cool reserve with rank 1 (monster or tower)";
-      else label = "Cool reserve with rank 2 (monster or tower)";
-      cost = value === 1 ? { red: 3 } : (mode === "both" ? { red: 11 } : { red: 7 });
-      desc = "Removes low cards from next deal (better quality), but reduces next reserve depth for calamity prep.";
-    } else if (slot === "yellow" && choice.tier) {
-      label = choice.tier === "high" ? "Siege Breaker" : "War Drums";
-      cost = yellowAttackTierCost(choice.tier, game.round);
-      desc = choice.tier === "high" ? "+9 Assault on first siege trick (next round)." : "+2 Assault on first siege trick (next round).";
-    } else if (slot === "blue" && choice.tier) {
-      label = choice.tier === "high" ? "Iron Curtain" : "Boiling Oil";
-      cost = blueDefenseTierCost(choice.tier, game.round);
-      desc = choice.tier === "high" ? "+9 Block on first defense trick (next round)." : "+2 Block on first defense trick (next round).";
+    btn.className = `armory-choice-btn${status.ok ? "" : " disabled"}`;
+    btn.disabled = !status.ok;
+    const reasonHtml = status.ok
+      ? ""
+      : `<small class="armory-choice-lock">${escapeHtml(status.reason)}</small>`;
+    btn.innerHTML = `<span>${escapeHtml(label)}</span><span class="shop-item-cost">${escapeHtml(formatCost(cost))}</span>${desc ? `<small class="armory-choice-desc">${escapeHtml(desc)}</small>` : ""}${reasonHtml}`;
+    if (status.ok) {
+      btn.onclick = () => {
+        const r = hooks.onArmoryWorker?.(slot, choice);
+        if (r?.ok) {
+          choicesEl.classList.add("hidden");
+        } else if (r?.msg) alert(r.msg);
+      };
     }
-    btn.innerHTML = `<span>${escapeHtml(label)}</span><span class="shop-item-cost">${escapeHtml(formatCost(cost))}</span>${desc ? `<small class="armory-choice-desc">${escapeHtml(desc)}</small>` : ""}`;
-    btn.onclick = () => {
-      const r = hooks.onArmoryWorker?.(slot, choice);
-      if (r?.ok) {
-        choicesEl.classList.add("hidden");
-      } else if (r?.msg) alert(r.msg);
-    };
     grid.appendChild(btn);
   }
 

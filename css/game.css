@@ -368,6 +368,47 @@ body {
   cursor: pointer;
 }
 
+.armory-choice-btn.disabled,
+.armory-choice-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #f4f4f4;
+}
+
+.armory-choice-lock {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #8b2e2e;
+  line-height: 1.25;
+}
+
+.station-options-preview {
+  margin: 0.35rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.station-options-preview li {
+  margin: 0.15rem 0;
+}
+
+.station-opt-ok strong {
+  color: inherit;
+}
+
+.station-opt-muted {
+  opacity: 0.65;
+}
+
+.station-options-preview.empty {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+
 .armory-choice-desc {
   display: block;
   font-size: 0.75rem;

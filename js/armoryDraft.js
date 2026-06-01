@@ -172,10 +172,11 @@ function aiPickWorker(game, pid) {
   }
 
   const legal = [];
+  const redUsed = d.teamBenchBuys[player.teamId] >= BENCH_MAX_PER_ARMORY;
   for (const slot of ARMORY_SLOTS) {
     if (player.lastWorkerSlot === slot) continue;
     if (isSlotOccupiedForPlayer(game, slot, player)) continue;
-    for (const choice of legalFourSlotChoices(game, team, slot)) {
+    for (const choice of legalFourSlotChoices(game, team, slot, { redBenchUsed: redUsed })) {
       legal.push({ slot, choice });
     }
   }
@@ -254,7 +255,9 @@ export function pickArmoryWorker(game, slot, choice) {
   }
 
   const team = game.teams[player.teamId];
-  const legal = legalFourSlotChoices(game, team, slot);
+  const legal = legalFourSlotChoices(game, team, slot, {
+    redBenchUsed: (game.armoryDraft?.teamBenchBuys?.[player.teamId] ?? 0) >= BENCH_MAX_PER_ARMORY,
+  });
   const match = legal.find((c) => JSON.stringify(c) === JSON.stringify(choice));
   if (!match) return { ok: false, msg: "Illegal purchase." };
 

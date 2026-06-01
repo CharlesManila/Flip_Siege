@@ -23,7 +23,7 @@ export const GREEN_REPAIR_BASE = 4;
 export const GREEN_REPAIR_MULT = 2.2;
 export const RED_BENCH_BASE = 3;
 export const RED_BENCH_MULT = 2.35;
-export const MAX_REPAIR_PER_VISIT = 6;
+export const MAX_REPAIR_PER_VISIT = 5;
 export const MAX_BENCH_PER_VISIT = 3;
 export const FOUR_SLOT_PICK_THRESHOLD = 8;
 
@@ -163,38 +163,125 @@ export function isSlotOccupiedForPlayer(game, slot, player) {
   return takers.some((p) => p.teamId === player.teamId);
 }
 
-export function legalFourSlotChoices(game, team, slot) {
-  const rn = game.round;
-  const out = [];
+/** Every purchasable variant at a station (for UI catalog). */
+export function fourSlotChoiceCatalog(_game, _team, slot) {
   if (slot === "green") {
-    for (let heal = 1; heal <= maxRepairHeal(team); heal++) {
-      const cost = repairCost(heal);
-      if (canAfford(team, cost)) out.push({ heal });
-    }
-  } else if (slot === "red") {
-    const options = [
+    return Array.from({ length: MAX_REPAIR_PER_VISIT }, (_, i) => ({ heal: i + 1 }));
+  }
+  if (slot === "red") {
+    return [
       { cull: { value: 1, mode: "band" } },
       { cull: { value: 2, mode: "band" } },
       { cull: { value: 2, mode: "both" } },
     ];
-    for (const o of options) {
-      if (redCullCount(team, o.cull) <= 0) continue;
-      if (canAfford(team, redCullCost(o.cull.value, o.cull.mode))) out.push(o);
-    }
-  } else if (slot === "yellow") {
-    for (const tier of ["low", "high"]) {
-      if (yellowAttackTierCost(tier, rn) && canAfford(team, yellowAttackTierCost(tier, rn))) {
-        out.push({ tier });
-      }
-    }
-  } else if (slot === "blue") {
-    for (const tier of ["low", "high"]) {
-      if (blueDefenseTierCost(tier, rn) && canAfford(team, blueDefenseTierCost(tier, rn))) {
-        out.push({ tier });
-      }
-    }
   }
-  return out;
+  if (slot === "yellow") {
+    return [{ tier: "low" }, { tier: "high" }];
+  }
+  if (slot === "blue") {
+    return [{ tier: "low" }, { tier: "high" }];
+  }
+  return [];
+}
+
+export function fourSlotChoicePresentation(game, team, slot, choice) {
+  const rn = game.round;
+  if (slot === "green" && choice?.heal) {
+    return {
+      label: `Repair +${choice.heal} HP`,
+      cost: repairCost(choice.heal),
+      desc: `Heal up to +${MAX_REPAIR_PER_VISIT} HP this visit (scaled green cost).`,
+    };
+  }
+  if (slot === "red" && choice?.cull) {
+    const { value, mode } = choice.cull;
+    let label = "";
+    if (mode === "both") label = "Cool reserve rank 1 or 2 (monster/tower)";
+    else if (value === 1) label = "Cool reserve rank 1 (monster/tower)";
+    else label = "Cool reserve rank 2 (monster/tower)";
+    return {
+      label,
+      cost: redCullCost(value, mode),
+      desc: "Low cards skip next deal — better hand quality, weaker calamity depth prep.",
+    };
+  }
+  if (slot === "yellow" && choice?.tier) {
+    const cost = yellowAttackTierCost(choice.tier, rn);
+    return {
+      label: choice.tier === "high" ? "Siege Breaker" : "War Drums",
+      cost: cost || (choice.tier === "high" ? YELLOW_ATTACK_TIERS.high.cost : YELLOW_ATTACK_TIERS.low.cost),
+      desc:
+        choice.tier === "high"
+          ? "+9 Assault on first siege trick next round (round 5+ Armory)."
+          : "+2 Assault on first siege trick next round.",
+    };
+  }
+  if (slot === "blue" && choice?.tier) {
+    const cost = blueDefenseTierCost(choice.tier, rn);
+    return {
+      label: choice.tier === "high" ? "Iron Curtain" : "Boiling Oil",
+      cost: cost || (choice.tier === "high" ? BLUE_DEFENSE_TIERS.high.cost : BLUE_DEFENSE_TIERS.low.cost),
+      desc:
+        choice.tier === "high"
+          ? "+9 Block on first defense trick next round (round 5+ Armory)."
+          : "+2 Block on first defense trick next round.",
+    };
+  }
+  return { label: "", cost: {}, desc: "" };
+}
+
+/** Whether a catalog choice can be bought now (afford + rules). */
+export function fourSlotChoicePurchasable(game, team, slot, choice, opts = {}) {
+  const rn = game.round;
+  const redUsed = opts.redBenchUsed ?? false;
+
+  if (slot === "green" && choice?.heal) {
+    const heal = choice.heal;
+    if (heal > maxRepairHeal(team)) {
+      return { ok: false, reason: `Need ${heal} missing HP (have ${team.castleMax - team.castleHp}).` };
+    }
+    const cost = repairCost(heal);
+    if (!canAfford(team, cost)) return { ok: false, reason: "Not enough green resources." };
+    return { ok: true };
+  }
+
+  if (slot === "red" && choice?.cull) {
+    if (redUsed) return { ok: false, reason: "Max one Red depth tradeoff this Armory." };
+    if (redCullCount(team, choice.cull) <= 0) {
+      return { ok: false, reason: "No matching cards in reserve." };
+    }
+    const cost = redCullCost(choice.cull.value, choice.cull.mode);
+    if (!canAfford(team, cost)) return { ok: false, reason: "Not enough red resources." };
+    return { ok: true };
+  }
+
+  if (slot === "yellow" && choice?.tier) {
+    const tier = YELLOW_ATTACK_TIERS[choice.tier];
+    if (!tier) return { ok: false, reason: "Unknown option." };
+    if (rn < tier.minRound) {
+      return { ok: false, reason: `Unlocks round ${tier.minRound} Armory.` };
+    }
+    if (!canAfford(team, tier.cost)) return { ok: false, reason: "Not enough yellow resources." };
+    return { ok: true };
+  }
+
+  if (slot === "blue" && choice?.tier) {
+    const tier = BLUE_DEFENSE_TIERS[choice.tier];
+    if (!tier) return { ok: false, reason: "Unknown option." };
+    if (rn < tier.minRound) {
+      return { ok: false, reason: `Unlocks round ${tier.minRound} Armory.` };
+    }
+    if (!canAfford(team, tier.cost)) return { ok: false, reason: "Not enough blue resources." };
+    return { ok: true };
+  }
+
+  return { ok: false, reason: "Unknown option." };
+}
+
+export function legalFourSlotChoices(game, team, slot, opts = {}) {
+  return fourSlotChoiceCatalog(game, team, slot).filter(
+    (choice) => fourSlotChoicePurchasable(game, team, slot, choice, opts).ok,
+  );
 }
 
 /** Add resources (capped by TEAM_RESOURCE_CAP total, not per color). */
