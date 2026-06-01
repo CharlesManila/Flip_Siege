@@ -95,14 +95,14 @@
     </section>
 
     <dialog id="scrap-dialog" class="scrap-dialog">
-      <h2>Bench from reserve</h2>
+      <h2>Cool reserve cards</h2>
       <p id="scrap-prompt" class="scrap-prompt">
-        Choose card(s) to bench — they skip the next deal only, then return to the top of your reserve.
+        Choose reserve card(s) to send to next-deal cooldown. Tradeoff: lower reserve depth next round, stronger first siege and calamity block.
       </p>
       <div id="scrap-choices" class="scrap-choices"></div>
       <div class="scrap-dialog-actions">
         <button type="button" id="btn-scrap-cancel" class="btn-secondary">Cancel</button>
-        <button type="button" id="btn-scrap-confirm" disabled>Confirm bench</button>
+        <button type="button" id="btn-scrap-confirm" disabled>Confirm cooldown</button>
       </div>
     </dialog>
 
@@ -125,7 +125,7 @@
         <li><strong>Resources:</strong> off-color &amp; trophies add ⌊rank/2⌋ to that color; <strong>28 total cap</strong> per team (Σ on castle bar).</li>
         <li><strong>Round ends:</strong> anyone at 1 card, or max tricks → Armory (2 buys).</li>
         <li><strong>Cooldown:</strong> played cards skip next deal (max 10 resting per team).</li>
-        <li><strong>Armory:</strong> green = repair · red = bench reserve (skip 1 deal) · blue = next round · Permanent = game (round 4+).</li>
+        <li><strong>Armory:</strong> green = repair · red = cool reserve cards (skip 1 deal, gain first-siege/calamity edge) · blue = next round · Permanent = game (round 4+).</li>
         <li><strong>Permanent color:</strong> pick before buying; ties Sigil/Mastery/etc. to that color.</li>
       </ul>
       <button type="button" id="btn-close-rules">Close</button>

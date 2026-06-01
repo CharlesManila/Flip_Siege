@@ -145,6 +145,10 @@ export function resolveCalamityFromPlays(game, trickPlays) {
         team.ironCurtainUsed = true;
       }
     }
+    // Red bench tradeoff: fewer reserve cards but stronger calamity defense.
+    if ((team.activeRedDepthEdge || 0) > 0) {
+      block += team.activeRedDepthEdge;
+    }
 
     let damage = Math.max(0, assault + prepExtra - block - SIEGE_SOAK);
     if (CASTLE_DESTROY_MIN_ROUND > 1 && rn < CASTLE_DESTROY_MIN_ROUND) {

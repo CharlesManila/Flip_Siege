@@ -12,6 +12,7 @@ import {
   BENCH_MAX_PER_ARMORY,
   PERMANENT_COSTS,
   PERMANENT_UNLOCK_ROUND,
+  RED_DEPTH_EDGE_PER_CARD,
   armoryPickOrder,
   benchCost,
   blueDefenseTierCost,
@@ -83,8 +84,8 @@ export function benchCardById(team, cardId) {
   const i = team.reserve.findIndex((c) => c.id === cardId);
   if (i < 0) return false;
   const c = team.reserve.splice(i, 1)[0];
-  if (!team.benched) team.benched = [];
-  team.benched.push(c);
+  if (!team.cooldownIds) team.cooldownIds = new Set();
+  team.cooldownIds.add(c.id);
   return true;
 }
 
@@ -114,6 +115,7 @@ export function applyFourSlotPurchase(game, teamId, slot, choice, rng) {
   } else if (slot === "red" && choice?.bench) {
     benchReserveSmart(team, choice.bench, rng);
     d.teamBenchBuys[teamId] += 1;
+    team.pendingRedDepthEdge = (team.pendingRedDepthEdge || 0) + choice.bench * RED_DEPTH_EDGE_PER_CARD;
   } else {
     const buff = fourSlotBuffKey(slot, choice);
     if (buff) team.pendingBuffs.add(buff);

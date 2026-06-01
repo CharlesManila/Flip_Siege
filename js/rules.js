@@ -26,6 +26,8 @@ export const RED_BENCH_MULT = 2.35;
 export const MAX_REPAIR_PER_VISIT = 6;
 export const MAX_BENCH_PER_VISIT = 3;
 export const FOUR_SLOT_PICK_THRESHOLD = 8;
+/** Red bench edge gained per reserved card sent to cooldown. */
+export const RED_DEPTH_EDGE_PER_CARD = 2;
 
 /** Off-color play earns floor(rank/2) resources (1 → 0, 10 → 5). */
 export function offColorResourceGain(faceValue) {

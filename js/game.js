@@ -29,6 +29,7 @@ import {
   addResources,
   offColorResourceGain,
   trophyResourceGain,
+  RED_DEPTH_EDGE_PER_CARD,
   isCalamityRound,
   isCalamityTrick,
   livingPool,
@@ -86,6 +87,10 @@ function makeTeam(id, deck, hp) {
     activeBuffs: new Set(),
     skipBlueDeal: false,
     marchTax: false,
+    pendingRedDepthEdge: 0,
+    activeRedDepthEdge: 0,
+    redDepthSiegeUsed: false,
+    redDepthDefenseUsed: false,
     warDrumsUsed: false,
     boilingOilUsed: false,
     siegeBreakerUsed: false,
@@ -227,6 +232,10 @@ export function dealRound(game) {
     t.activeBuffs = new Set(t.pendingBuffs);
     t.pendingBuffs = new Set();
     t.sallyGate = t.activeBuffs.has("sally_gate");
+    t.activeRedDepthEdge = t.pendingRedDepthEdge || 0;
+    t.pendingRedDepthEdge = 0;
+    t.redDepthSiegeUsed = false;
+    t.redDepthDefenseUsed = false;
     const plys = teamPlayers(game, t.id);
     const needed = hs * plys.length;
     let pool = livingPool(t, game.cooldownMechanic);
@@ -365,6 +374,10 @@ function resolveTrick(game, plays) {
       st.siegeBreakerUsed = true;
     }
   }
+  if (!st.redDepthSiegeUsed && (st.activeRedDepthEdge || 0) > 0) {
+    assault += st.activeRedDepthEdge;
+    st.redDepthSiegeUsed = true;
+  }
   if (sigilEliteDefense) {
     if (dt.activeBuffs.has("boiling_oil")) dt.boilingOilUsed = true;
     if (dt.activeBuffs.has("iron_curtain")) dt.ironCurtainUsed = true;
@@ -377,6 +390,10 @@ function resolveTrick(game, plays) {
       block += scaledBuff(FINISHER_BASE, rn);
       dt.ironCurtainUsed = true;
     }
+  }
+  if (!dt.redDepthDefenseUsed && (dt.activeRedDepthEdge || 0) > 0) {
+    block += dt.activeRedDepthEdge;
+    dt.redDepthDefenseUsed = true;
   }
 
   let damage = Math.max(0, assault - block);
@@ -870,6 +887,7 @@ export function completeBenchPurchase(game, key, cardIds, teamId = 0) {
   const paid = payStash(team, cost);
   if (!paid) return { ok: false, msg: "Payment failed." };
   for (const id of ids) benchCardById(team, id);
+  team.pendingRedDepthEdge = (team.pendingRedDepthEdge || 0) + ids.length * RED_DEPTH_EDGE_PER_CARD;
 
   if (game.armoryDraft?.teamBenchBuys) {
     game.armoryDraft.teamBenchBuys[teamId] += 1;
@@ -879,7 +897,9 @@ export function completeBenchPurchase(game, key, cardIds, teamId = 0) {
         return c ? cardLabel(c, true) : id;
       })
       .join(", ");
-    game.log.push(`You benched ${labels} (${key}).`);
+    game.log.push(
+      `You cooled ${labels} (${key}) — next round reserve depth drops, but +${ids.length * RED_DEPTH_EDGE_PER_CARD} first-siege and calamity block.`,
+    );
     recordHumanArmoryBuy(game, key, { benched_ids: ids });
     resumeArmoryDraftAfterBench(game);
     return { ok: true };
@@ -893,7 +913,9 @@ export function completeBenchPurchase(game, key, cardIds, teamId = 0) {
       return c ? cardLabel(c, true) : id;
     })
     .join(", ");
-  game.log.push(`You benched ${labels} — skip next deal, then back to reserve top (${key}).`);
+  game.log.push(
+    `You cooled ${labels} — skip next deal; +${ids.length * RED_DEPTH_EDGE_PER_CARD} first-siege and calamity block (${key}).`,
+  );
   recordHumanArmoryBuy(game, key, { benched_ids: ids });
   return { ok: true };
 }

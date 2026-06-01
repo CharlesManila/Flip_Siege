@@ -311,13 +311,13 @@
       <div class="zones">
         <div class="zone deck"><strong>Deck (40)</strong> All cards you own this match. Never runs out — cards move between zones.</div>
         <div class="zone"><strong>Hand</strong> Dealt this round. Secret.</div>
-        <div class="zone"><strong>Reserve</strong> Undealt pile this round (face-down). Used for calamity flip &amp; Bench.</div>
+        <div class="zone"><strong>Reserve</strong> Undealt pile this round (face-down). Used for calamity flips and red depth tradeoff.</div>
         <div class="zone stash"><strong>Resources</strong> Team tracker by color. Off-color + trophies add points; spend at Armory.</div>
         <div class="zone removed"><strong>Removed</strong> Cards purged by Great Purge. Never dealt again (Bench is <em>not</em> removed).</div>
         <div class="zone"><strong>Resting</strong> Played last round — skip <strong>next deal only</strong> (max 10 per team), then return to pool.</div>
         <div class="zone"><strong>Table trick</strong> 4 cards played, then resolved.</div>
       </div>
-      <figcaption>2v2: one deck per team. Living pool = deck minus purged, benched, and resting (cooldown) cards.</figcaption>
+      <figcaption>2v2: one deck per team. Living pool = deck minus purged and resting/cooldown cards.</figcaption>
     </figure>
 
     <!-- ========== GOAL ========== -->
@@ -378,7 +378,7 @@
     <p>Before each deal, if your team cannot fill <strong>every player’s hand</strong> from the living pool, the game auto-relieves pressure in order:</p>
     <ol>
       <li><strong>Resting</strong> cards return to the pool until hands can be filled.</li>
-      <li><strong>Benched</strong> cards return to reserve early if still short.</li>
+      <li><strong>Cooldown-marked reserve cards</strong> return to the pool only after they sit out one deal.</li>
     </ol>
     <p>Deal safeguard keeps rounds playable in low-pool edge cases by auto-relieving resting/bench pressure before dealing.</p>
     <h3>6.3 — 1v1 companion pyramid</h3>
@@ -485,17 +485,17 @@
       <li><strong>Green</strong> — repair (scaled green cost, choose HP healed).</li>
       <li><strong>Yellow</strong> — War Drums or Siege Breaker (round 5+).</li>
       <li><strong>Blue</strong> — Boiling Oil or Iron Curtain (round 5+). <strong>One blue worker globally</strong> per draft.</li>
-      <li><strong>Red</strong> — bench 1–3 reserve cards (skip next deal). <strong>One red worker globally</strong> per draft.</li>
+      <li><strong>Red</strong> — send 1–3 reserve cards to <strong>next-deal cooldown</strong> (you choose which). <strong>One red worker globally</strong> per draft.</li>
       <li><strong>No Vault station</strong> in the live game.</li>
       <li>Cannot return to the <strong>same color station</strong> you just left on your previous pick.</li>
-      <li>Max <strong>one bench action per team</strong> per Armory.</li>
+      <li>Max <strong>one red depth tradeoff</strong> per team per Armory.</li>
       <li><strong>Permanent</strong> (round 4+): may be bought instead of a station pick when eligible (one per team per game).</li>
     </ul>
     <h3>Unlock schedule</h3>
     <table>
       <thead><tr><th>When</th><th>Unlocks</th></tr></thead>
       <tbody>
-        <tr><td>Any Armory</td><td>Repair, Bench, War Drums, Boiling Oil</td></tr>
+        <tr><td>Any Armory</td><td>Repair, Red depth tradeoff, War Drums, Boiling Oil</td></tr>
         <tr><td><strong>Round 4 Armory</strong></td><td><strong>Permanents</strong> (one per team per game)</td></tr>
         <tr><td><strong>Round 5 Armory</strong></td><td><strong>Siege Breaker</strong>, <strong>Iron Curtain</strong></td></tr>
       </tbody>
@@ -507,10 +507,10 @@
         <tr><td>Green repair</td><td>4G ×2.2 per HP (max +6)</td><td>Heal now</td></tr>
         <tr><td>Yellow</td><td>10Y / 18Y</td><td>War Drums (r1+) / Siege Breaker (r5+)</td></tr>
         <tr><td>Blue</td><td>10B / 18B</td><td>Boiling Oil (r1+) / Iron Curtain (r5+)</td></tr>
-        <tr><td>Red bench</td><td>3R / 7R / 16R</td><td>Bench 1/2/3 reserve cards — skip <strong>next deal only</strong>, then top of reserve</td></tr>
+        <tr><td>Red depth tradeoff</td><td>3R / 7R / 16R</td><td>Send 1/2/3 reserve cards to next-deal cooldown; gain +2/+4/+6 first-siege Assault and calamity Block next round</td></tr>
       </tbody>
     </table>
-    <p><strong>Bench:</strong> Benched cards skip one deal only; card count unchanged.</p>
+    <p><strong>Depth tradeoff:</strong> You weaken next reserve depth (harder calamity prep) in exchange for a stronger first siege and stronger calamity defense next round.</p>
     <p>Clear used round buffs at the start of the round after they apply.</p>
 
     <!-- ========== PERMANENTS ========== -->
@@ -590,10 +590,10 @@
     <dl class="faq">
       <dt>Can I buy Repair and a Permanent in the same Armory?</dt>
       <dd>Yes, if you have 2 purchases. Permanent uses one.</dd>
-      <dt>Can I buy Bench 1 and Bench 2 same visit?</dt>
-      <dd>No. Max one Bench purchase per visit.</dd>
-      <dt>What if I want to Bench but reserve is empty?</dt>
-      <dd>You cannot buy Bench. The purchase is illegal.</dd>
+      <dt>Can I buy multiple Red depth tradeoffs in one visit?</dt>
+      <dd>No. Max one Red purchase per team per Armory visit.</dd>
+      <dt>What if reserve is empty on Red?</dt>
+      <dd>You cannot buy Red. The purchase is illegal.</dd>
       <dt>Does Purge remove cards currently in reserve/hand?</dt>
       <dd>Yes. Great Purge removes all 10 cards of that color from your deck state when it resolves.</dd>
       <dt>Can the enemy deal a card I “won” as a trophy?</dt>
@@ -657,10 +657,10 @@
       <div class="ref-card">
         <h3>Resource pay</h3>
         <ul style="margin:0;padding-left:1.1rem">
-          <li>Green: Repair 3 · Red: Bench 3 / 7</li>
+          <li>Green: Repair 3 · Red: Depth 3 / 7 / 16</li>
           <li>Blue: Drums/Oil 10 · Tax 12</li>
           <li>Gate 10 · Breaker/Curtain 14</li>
-          <li>Overpay lost · 1 Bench max/visit</li>
+          <li>Overpay lost · 1 Red max/visit</li>
         </ul>
       </div>
     </div>

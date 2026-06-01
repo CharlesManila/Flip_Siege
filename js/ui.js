@@ -426,9 +426,9 @@ function renderBenchPicker(game, hooks) {
   const cost = VISIT_COSTS[key];
   const prompt = document.getElementById("scrap-prompt");
   if (prompt) {
-    prompt.innerHTML = `Pay <strong>${escapeHtml(formatCost(cost))}</strong> to <strong>bench</strong> 
-      <strong>${count}</strong> card${count === 1 ? "" : "s"} from your <strong>reserve</strong> 
-      (${team.reserve.length} in reserve). They <strong>skip the next deal only</strong>, then return to reserve top. Click to select, then confirm.`;
+    prompt.innerHTML = `Pay <strong>${escapeHtml(formatCost(cost))}</strong> to send
+      <strong>${count}</strong> card${count === 1 ? "" : "s"} from your <strong>reserve</strong> to <strong>next-deal cooldown</strong>
+      (${team.reserve.length} in reserve). Tradeoff: lower next reserve depth, stronger first siege and calamity block next round. Click to select, then confirm.`;
   }
 
   const updateConfirm = () => {
@@ -436,7 +436,7 @@ function renderBenchPicker(game, hooks) {
       confirmBtn.disabled = selected.size !== count;
       confirmBtn.textContent =
         selected.size === count
-          ? `Confirm bench (${count})`
+          ? `Confirm cooldown (${count})`
           : `Select ${count - selected.size} more`;
     }
   };
@@ -595,7 +595,7 @@ export function renderBoard(game, hooks) {
     $("#btn-play-again")?.classList.remove("hidden");
   } else if (game.phase === "armory") {
     if (game.pendingBench) {
-      prompt.textContent = `Choose ${game.pendingBench.count} reserve card(s) to bench.`;
+      prompt.textContent = `Choose ${game.pendingBench.count} reserve card(s) to send to cooldown.`;
       renderBenchPicker(game, hooks);
       $("#armory-panel").classList.remove("hidden");
     } else if (game.subphase === "armory_draft") {
@@ -627,7 +627,7 @@ const SLOT_META = {
   green: { title: "Green — Repair", color: "green" },
   yellow: { title: "Yellow — Attack", color: "yellow" },
   blue: { title: "Blue — Defense", color: "blue" },
-  red: { title: "Red — Bench", color: "red" },
+  red: { title: "Red — Depth Tradeoff", color: "red" },
 };
 
 function renderArmoryDraft(game, hooks) {
@@ -751,9 +751,9 @@ function showSlotChoices(game, hooks, slot, player) {
       cost = repairCost(choice.heal);
       desc = "Heals immediately (max +6).";
     } else if (slot === "red" && choice.bench) {
-      label = `Bench ${choice.bench} card(s)`;
+      label = `Cool ${choice.bench} reserve card(s)`;
       cost = benchCost(choice.bench);
-      desc = "Chosen reserve cards skip next deal only, then return to reserve top.";
+      desc = "Send reserve cards to next-deal cooldown; gain first-siege and calamity defense edge next round.";
     } else if (slot === "yellow" && choice.tier) {
       label = choice.tier === "high" ? "Siege Breaker" : "War Drums";
       cost = yellowAttackTierCost(choice.tier, game.round);
@@ -797,7 +797,7 @@ function renderArmory(game, hooks) {
 
   const summary = $("#armory-summary");
   if (summary) {
-    summary.textContent = `${buysLeft} purchase${buysLeft === 1 ? "" : "s"} left this visit. Each buy uses one slot (a Permanent counts as one full buy). Max one Bench per visit.`;
+    summary.textContent = `${buysLeft} purchase${buysLeft === 1 ? "" : "s"} left this visit. Each buy uses one slot (a Permanent counts as one full buy). Max one Red depth tradeoff per visit.`;
   }
 
   const permColorSection = $("#perm-color-section");
