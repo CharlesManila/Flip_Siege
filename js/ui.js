@@ -666,7 +666,7 @@ function renderArmoryDraft(game, hooks) {
   const prompt = $("#prompt");
   if (prompt) {
     if (human) {
-      prompt.textContent = `Your worker pick (${human.name}). Place on a station or Pass. Cannot revisit your last color station.`;
+      prompt.textContent = `Your worker pick (${human.name}). Place on a station or Pass. Red/Blue/Yellow = one worker globally; Green = one per team. Cannot revisit your last station.`;
     } else if (player) {
       prompt.textContent = `Waiting — ${player.name} is picking…`;
     } else {

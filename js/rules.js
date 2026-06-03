@@ -32,7 +32,26 @@ export const GREEN_REPAIR_TIERS = [
 
 /** Four-slot worker board (matches sim). */
 export const ARMORY_SLOTS = ["green", "yellow", "blue", "red"];
-export const ARMORY_GLOBAL_EXCLUSIVE = new Set(["red", "blue"]);
+/** One worker table-wide per visit (kits are unique). Green = one per team. */
+export const ARMORY_GLOBAL_EXCLUSIVE = new Set(["red", "blue", "yellow"]);
+
+const GLOBAL_ROUND_KITS = new Set([
+  "war_drums",
+  "siege_breaker",
+  "boiling_oil",
+  "iron_curtain",
+]);
+
+/** Another team already holds this round kit (active or bought this Armory). */
+export function globalKitTakenByOtherTeam(game, teamId, buffKey) {
+  if (!GLOBAL_ROUND_KITS.has(buffKey)) return false;
+  for (let i = 0; i < game.teams.length; i++) {
+    if (i === teamId) continue;
+    const t = game.teams[i];
+    if (t.activeBuffs?.has(buffKey) || t.pendingBuffs?.has(buffKey)) return true;
+  }
+  return false;
+}
 export const MAX_REPAIR_PER_VISIT = 5;
 export const MAX_BENCH_PER_VISIT = 3;
 export const FOUR_SLOT_PICK_THRESHOLD = 8;
@@ -294,6 +313,9 @@ export function fourSlotChoicePurchasable(game, team, slot, choice, opts = {}) {
     if (rn < tier.minRound) {
       return { ok: false, reason: `Unlocks round ${tier.minRound} Armory.` };
     }
+    if (globalKitTakenByOtherTeam(game, team.id, tier.buff)) {
+      return { ok: false, reason: "Another team already has this siege kit." };
+    }
     if (!canAfford(team, tier.cost)) return { ok: false, reason: "Not enough yellow resources." };
     return { ok: true };
   }
@@ -303,6 +325,9 @@ export function fourSlotChoicePurchasable(game, team, slot, choice, opts = {}) {
     if (!tier) return { ok: false, reason: "Unknown option." };
     if (rn < tier.minRound) {
       return { ok: false, reason: `Unlocks round ${tier.minRound} Armory.` };
+    }
+    if (globalKitTakenByOtherTeam(game, team.id, tier.buff)) {
+      return { ok: false, reason: "Another team already has this wall kit." };
     }
     if (!canAfford(team, tier.cost)) return { ok: false, reason: "Not enough blue resources." };
     return { ok: true };
