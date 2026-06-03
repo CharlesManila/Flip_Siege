@@ -423,9 +423,9 @@
     <!-- ========== COMBAT ========== -->
     <h2 id="combat">9. Assault, Block &amp; damage</h2>
     <h3>Assault (siege team)</h3>
-    <p>Sum <strong>monster ranks</strong> of led-color monsters played by the sieging team, plus Armory bonuses on the <strong>first siege trick</strong> of the round (War Drums, Siege Breaker, etc.), plus Permanent bonuses (§13).</p>
+    <p>Sum <strong>monster ranks</strong> of led-color monsters played by the sieging team, plus <strong>round-long</strong> Armory assault auras (War Drums / Siege Breaker on every siege trick; Siege Breaker also spikes the first siege), plus Permanent bonuses (§13).</p>
     <h3>Block (defense team)</h3>
-    <p>Sum <strong>tower ranks</strong> of led-color towers played by the defending team, plus first-defense-trick buffs (Boiling Oil, Iron Curtain), plus Permanent bonuses.</p>
+    <p>Sum <strong>tower ranks</strong> of led-color towers played by the defending team, plus round-long defense auras (Boiling Oil / Iron Curtain on every defense trick and calamity), plus Permanent bonuses.</p>
     <h3>Damage</h3>
     <p><strong>Damage = Assault − Block</strong> (minimum 0). Apply to the <strong>defending team’s castle</strong>. There is <strong>no</strong> rule that castles must stop at 1 HP in early rounds — if Assault overwhelms Block, the castle can fall.</p>
     <h3>Combat tier (round 5+ massacre)</h3>
@@ -436,7 +436,7 @@
       <span class="t10">R6: +10</span>
       <span class="t11">R7+: +11…</span>
     </div>
-    <p><strong>Example:</strong> Siege Breaker (+9 base) on round 6 first siege trick → <strong>+9 + 10 = +19 Assault</strong> before cards.</p>
+    <p><strong>Example:</strong> Siege Breaker on round 6 — <strong>+2 Assault every siege trick</strong> (+12 tier = +14 each). Your <strong>first</strong> siege trick also gets <strong>+9 + 10 = +19</strong> extra before cards.</p>
     <h3>Worked example (2v2)</h3>
     <p><strong>Lead green.</strong> Siege: Goblin 3 + Goblin 1 → Assault <strong>4</strong>. Defense: Bow 2 + off-color Orc → Block <strong>2</strong>. Damage <strong>2</strong>. Orc gives defense team resources = ⌊4/2⌋ = 2.</p>
 
@@ -455,7 +455,7 @@
       <thead><tr><th>Tier</th><th>Pay with</th><th>Examples</th></tr></thead>
       <tbody>
         <tr><td>Visit (instant)</td><td><strong>Green</strong> / <strong>Red</strong></td><td>Repair 3G · Red depth 3R / 7R / 11R</td></tr>
-        <tr><td>Round (next round)</td><td><strong>Blue</strong> / <strong>Yellow</strong></td><td>War Drums 10Y · Boiling Oil 10B</td></tr>
+        <tr><td>Round (next round)</td><td><strong>Blue</strong> / <strong>Yellow</strong></td><td>War Drums 6Y · Boiling Oil 6B · finishers 12</td></tr>
         <tr><td>Finishers</td><td><strong>Blue</strong> / <strong>Yellow</strong> (round 5+)</td><td>Siege Breaker 18Y · Iron Curtain 18B</td></tr>
         <tr><td>Permanent (once)</td><td><strong>All four colors</strong></td><td>See §13 (unlock round 4 Armory)</td></tr>
       </tbody>
@@ -505,8 +505,8 @@
       <thead><tr><th>Station</th><th>Cost</th><th>Effect</th></tr></thead>
       <tbody>
         <tr><td>Green repair</td><td>4G ×2.2 per HP (max +5)</td><td>Heal now</td></tr>
-        <tr><td>Yellow</td><td>10Y / 18Y</td><td>War Drums (r1+) / Siege Breaker (r5+)</td></tr>
-        <tr><td>Blue</td><td>10B / 18B</td><td>Boiling Oil (r1+) / Iron Curtain (r5+)</td></tr>
+        <tr><td>Yellow</td><td>6Y / 12Y</td><td>War Drums: +2 Assault every siege trick · Siege Breaker: +3 every siege, +9 first (r5+)</td></tr>
+        <tr><td>Blue</td><td>6B / 12B</td><td>Boiling Oil: +2 Block every defense &amp; calamity · Iron Curtain: +3 + calamity +9 (r5+)</td></tr>
         <tr><td>Red depth tradeoff</td><td>3R / 7R / 11R</td><td>Cool reserve cards with rank-1, rank-2, or both (monster/tower) for next deal; this lowers depth prep but improves deal quality</td></tr>
       </tbody>
     </table>
@@ -564,7 +564,7 @@
     <ol>
       <li>Start from <strong>prep block</strong> (reserve wall + depth bonus).</li>
       <li>Add each defender's <strong>led-color tower block</strong> (off-color = 0 block).</li>
-      <li>Add first-defense buffs if active (Boiling Oil / Iron Curtain).</li>
+      <li>Add defense round buffs if active (Boiling Oil / Iron Curtain — includes calamity).</li>
       <li><strong>Total block</strong> = prep + cards + buffs.</li>
       <li><strong>Damage</strong> = Assault + underprep − total block (minimum 0).</li>
     </ol>

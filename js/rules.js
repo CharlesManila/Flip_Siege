@@ -14,7 +14,14 @@ export const SIEGE_SOAK = 0;
 export const TIER_R5 = 5;
 export const TIER_R6 = 10;
 export const FINISHER_BASE = 9;
+/** @deprecated first-trick-only; use round auras below */
 export const ROUND_BUFF_BASE = 2;
+/** Per siege trick while War Drums / Siege Breaker aura active */
+export const ROUND_AURA_ASSAULT_LOW = 2;
+export const ROUND_AURA_ASSAULT_HIGH = 3;
+/** Per defense trick + calamity while Oil / Curtain active */
+export const ROUND_AURA_BLOCK_LOW = 2;
+export const ROUND_AURA_BLOCK_HIGH = 3;
 
 /** Four-slot worker board (matches sim lowered costs). */
 export const ARMORY_SLOTS = ["green", "yellow", "blue", "red"];
@@ -50,12 +57,12 @@ export function ensureTeamResources(team) {
 }
 
 export const YELLOW_ATTACK_TIERS = {
-  low: { buff: "war_drums", cost: { yellow: 10 }, minRound: 1 },
-  high: { buff: "siege_breaker", cost: { yellow: 18 }, minRound: 5 },
+  low: { buff: "war_drums", cost: { yellow: 6 }, minRound: 1 },
+  high: { buff: "siege_breaker", cost: { yellow: 12 }, minRound: 5 },
 };
 export const BLUE_DEFENSE_TIERS = {
-  low: { buff: "boiling_oil", cost: { blue: 10 }, minRound: 1 },
-  high: { buff: "iron_curtain", cost: { blue: 18 }, minRound: 5 },
+  low: { buff: "boiling_oil", cost: { blue: 6 }, minRound: 1 },
+  high: { buff: "iron_curtain", cost: { blue: 12 }, minRound: 5 },
 };
 
 export function repairCost(heal) {
@@ -212,8 +219,8 @@ export function fourSlotChoicePresentation(game, team, slot, choice) {
       cost: cost || (choice.tier === "high" ? YELLOW_ATTACK_TIERS.high.cost : YELLOW_ATTACK_TIERS.low.cost),
       desc:
         choice.tier === "high"
-          ? "+9 Assault on first siege trick next round (round 5+ Armory)."
-          : "+2 Assault on first siege trick next round.",
+          ? "+2 Assault every siege trick; first siege also +9 (+ tier). Round 5+."
+          : "+1 Assault on every siege trick next round (+ tier).",
     };
   }
   if (slot === "blue" && choice?.tier) {
@@ -223,8 +230,8 @@ export function fourSlotChoicePresentation(game, team, slot, choice) {
       cost: cost || (choice.tier === "high" ? BLUE_DEFENSE_TIERS.high.cost : BLUE_DEFENSE_TIERS.low.cost),
       desc:
         choice.tier === "high"
-          ? "+9 Block on first defense trick next round (round 5+ Armory)."
-          : "+2 Block on first defense trick next round.",
+          ? "+3 Block every defense & calamity; calamity also +9 (+ tier). Round 5+."
+          : "+2 Block on every defense trick and calamity next round (+ tier).",
     };
   }
   return { label: "", cost: {}, desc: "" };
@@ -332,12 +339,12 @@ export const ROUND_LABELS = {
 };
 
 export const ROUND_DESCRIPTIONS = {
-  war_drums: "+2 Assault on your first siege trick (+ combat tier round 5+).",
-  boiling_oil: "+2 Block on your first defense trick (+ tier round 5+).",
+  war_drums: "+2 Assault on every siege trick you play (+ tier round 5+).",
+  boiling_oil: "+2 Block on every defense trick and calamity (+ tier).",
+  siege_breaker: "+3 Assault every siege trick; +9 on your first siege (+ tier).",
+  iron_curtain: "+3 Block every defense/calamity; +9 on calamity (+ tier).",
   march_tax: "+1 resource on each off-color your team plays.",
   sally_gate: "On your first lead, led color may differ from your lead monster.",
-  siege_breaker: "+9 Assault on first siege trick (+ tier). Unlocks round 5 Armory.",
-  iron_curtain: "+9 Block on first defense trick (+ tier). Unlocks round 5 Armory.",
 };
 
 export const PERMANENT_COSTS = {
@@ -481,16 +488,58 @@ export function isSigilElite(card, team) {
 function sigilEliteSiegeBuffs(team, round, isFirstSiegeTrick) {
   if (!isFirstSiegeTrick || !team.activeBuffs) return 0;
   let b = 0;
-  if (team.activeBuffs.has("war_drums")) b += scaledBuff(ROUND_BUFF_BASE, round);
-  if (team.activeBuffs.has("siege_breaker")) b += scaledBuff(FINISHER_BASE, round);
+  if (team.activeBuffs.has("war_drums")) b += scaledBuff(ROUND_AURA_ASSAULT_LOW, round);
+  if (team.activeBuffs.has("siege_breaker")) {
+    b += scaledBuff(ROUND_AURA_ASSAULT_HIGH, round);
+    b += scaledBuff(FINISHER_BASE, round);
+  }
   return b;
 }
 
 function sigilEliteDefenseBuffs(team, round, isFirstDefenseTrick) {
   if (!isFirstDefenseTrick || !team.activeBuffs) return 0;
   let b = 0;
-  if (team.activeBuffs.has("boiling_oil")) b += scaledBuff(ROUND_BUFF_BASE, round);
-  if (team.activeBuffs.has("iron_curtain")) b += scaledBuff(FINISHER_BASE, round);
+  if (team.activeBuffs.has("boiling_oil")) b += scaledBuff(ROUND_AURA_BLOCK_LOW, round);
+  if (team.activeBuffs.has("iron_curtain")) {
+    b += scaledBuff(ROUND_AURA_BLOCK_HIGH, round);
+    b += scaledBuff(FINISHER_BASE, round);
+  }
+  return b;
+}
+
+/** Round buffs for sieging team (every trick; finisher spike on first siege). */
+export function siegeTeamTrickBuffs(team, round, isFirstSiegeTrick) {
+  if (!team.activeBuffs) return 0;
+  let b = 0;
+  if (team.activeBuffs.has("war_drums")) b += scaledBuff(ROUND_AURA_ASSAULT_LOW, round);
+  if (team.activeBuffs.has("siege_breaker")) {
+    b += scaledBuff(ROUND_AURA_ASSAULT_HIGH, round);
+    if (isFirstSiegeTrick) b += scaledBuff(FINISHER_BASE, round);
+  }
+  return b;
+}
+
+/** Round buffs for defending team (every defense trick). */
+export function defenseTeamTrickBuffs(team, round, isFirstDefenseTrick) {
+  if (!team.activeBuffs) return 0;
+  let b = 0;
+  if (team.activeBuffs.has("boiling_oil")) b += scaledBuff(ROUND_AURA_BLOCK_LOW, round);
+  if (team.activeBuffs.has("iron_curtain")) {
+    b += scaledBuff(ROUND_AURA_BLOCK_HIGH, round);
+    if (isFirstDefenseTrick) b += scaledBuff(FINISHER_BASE, round);
+  }
+  return b;
+}
+
+/** Calamity defense buffs (Oil aura + Curtain aura & finisher). */
+export function calamityTeamBuffs(team, round) {
+  if (!team.activeBuffs) return 0;
+  let b = 0;
+  if (team.activeBuffs.has("boiling_oil")) b += scaledBuff(ROUND_AURA_BLOCK_LOW, round);
+  if (team.activeBuffs.has("iron_curtain")) {
+    b += scaledBuff(ROUND_AURA_BLOCK_HIGH, round);
+    b += scaledBuff(FINISHER_BASE, round);
+  }
   return b;
 }
 

@@ -18,7 +18,6 @@ import {
   CASTLE_HP_MUST,
   FINISHER_BASE,
   PERMANENT_COSTS,
-  ROUND_BUFF_BASE,
   ROUND_COSTS,
   ROUND_MIN,
   VISIT_COSTS,
@@ -42,7 +41,8 @@ import {
   rotateRoundCooldown,
   roundEnds,
   scaleCombat,
-  scaledBuff,
+  siegeTeamTrickBuffs,
+  defenseTeamTrickBuffs,
   siegerTeamForTrick,
   trickPlayOrder,
   stashValue,
@@ -343,30 +343,20 @@ function resolveTrick(game, plays) {
   }
 
   if (sigilEliteSiege) {
-    if (st.activeBuffs.has("war_drums")) st.warDrumsUsed = true;
     if (st.activeBuffs.has("siege_breaker")) st.siegeBreakerUsed = true;
+    if (st.activeBuffs.has("war_drums")) st.warDrumsUsed = true;
   } else {
-    if (!st.warDrumsUsed && st.activeBuffs.has("war_drums")) {
-      assault += scaledBuff(ROUND_BUFF_BASE, rn);
-      st.warDrumsUsed = true;
-    }
-    if (!st.siegeBreakerUsed && st.activeBuffs.has("siege_breaker")) {
-      assault += scaledBuff(FINISHER_BASE, rn);
-      st.siegeBreakerUsed = true;
-    }
+    assault += siegeTeamTrickBuffs(st, rn, isFirstSiegeTrick);
+    if (isFirstSiegeTrick && st.activeBuffs.has("siege_breaker")) st.siegeBreakerUsed = true;
+    if (st.activeBuffs.has("war_drums")) st.warDrumsUsed = true;
   }
   if (sigilEliteDefense) {
-    if (dt.activeBuffs.has("boiling_oil")) dt.boilingOilUsed = true;
     if (dt.activeBuffs.has("iron_curtain")) dt.ironCurtainUsed = true;
+    if (dt.activeBuffs.has("boiling_oil")) dt.boilingOilUsed = true;
   } else {
-    if (!dt.boilingOilUsed && dt.activeBuffs.has("boiling_oil")) {
-      block += scaledBuff(ROUND_BUFF_BASE, rn);
-      dt.boilingOilUsed = true;
-    }
-    if (!dt.ironCurtainUsed && dt.activeBuffs.has("iron_curtain")) {
-      block += scaledBuff(FINISHER_BASE, rn);
-      dt.ironCurtainUsed = true;
-    }
+    block += defenseTeamTrickBuffs(dt, rn, isFirstDefenseTrick);
+    if (isFirstDefenseTrick && dt.activeBuffs.has("iron_curtain")) dt.ironCurtainUsed = true;
+    if (dt.activeBuffs.has("boiling_oil")) dt.boilingOilUsed = true;
   }
 
   let damage = Math.max(0, assault - block);

@@ -22,6 +22,7 @@ import {
   canFollow,
   FINISHER_BASE,
   isCalamityRound,
+  maxTricks,
   isSigilElite,
   payStash,
   recyclePaid,
@@ -478,6 +479,7 @@ export function scoreArmoryWorkerPick(game, team, teamId, slot, choice) {
     if (hp < max * 0.25) s += 50;
     if (hp < max * 0.45) s += 30;
     if (nextCal && hp < max * 0.65) s += 25;
+    if (hp > max * 0.72) s -= 28;
     return s - costG * 4;
   }
   if (slot === "red" && choice?.cull) {
@@ -492,22 +494,32 @@ export function scoreArmoryWorkerPick(game, team, teamId, slot, choice) {
     return s - costR * 2.5;
   }
   if (slot === "yellow" && choice?.tier) {
-    if (choice.tier === "high") return round >= 5 && hp > max * 0.15 ? 58 : -15;
-    let s = 40;
-    if ((t.yellow || 0) < 6) s -= 20;
+    const mt = maxTricks(game.round + 1);
+    const siegeTricks = Math.max(1, Math.floor(mt / 2));
+    if (choice.tier === "high") {
+      if (round < 5 || hp <= max * 0.15) return -15;
+      let s = 40 + siegeTricks * 14;
+      if (nextCal) s += 12;
+      return s;
+    }
+    let s = 38 + siegeTricks * 11;
+    if ((t.yellow || 0) < 6) s -= 8;
     return s;
   }
   if (slot === "blue" && choice?.tier) {
+    const mt = maxTricks(game.round + 1);
+    const defTricks = Math.max(1, Math.floor(mt / 2));
     if (choice.tier === "high") {
-      let s = round >= 5 ? 55 : -15;
-      if (hp < max * 0.5) s += 18;
-      if (nextCal) s += 22;
+      if (round < 5) return -15;
+      let s = 55 + defTricks * 16;
+      if (hp < max * 0.5) s += 15;
+      if (nextCal) s += 36;
       return s;
     }
-    let s = 44;
-    if (hp < max * 0.5) s += 15;
-    if (nextCal) s += 20;
-    if ((t.blue || 0) < 8) s -= 25;
+    let s = 50 + defTricks * 14;
+    if (hp < max * 0.5) s += 16;
+    if (nextCal) s += 32;
+    if ((t.blue || 0) < 6) s -= 6;
     return s;
   }
   return -20;

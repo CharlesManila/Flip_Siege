@@ -10,9 +10,7 @@ import {
   blockValue,
   isSigilElite,
   scaleCombat,
-  scaledBuff,
-  FINISHER_BASE,
-  ROUND_BUFF_BASE,
+  calamityTeamBuffs,
   SIEGE_SOAK,
   CASTLE_DESTROY_MIN_ROUND,
 } from "./rules.js";
@@ -133,17 +131,12 @@ export function resolveCalamityFromPlays(game, trickPlays) {
     }
 
     if (sigilElite) {
-      if (team.activeBuffs.has("boiling_oil")) team.boilingOilUsed = true;
       if (team.activeBuffs.has("iron_curtain")) team.ironCurtainUsed = true;
+      if (team.activeBuffs.has("boiling_oil")) team.boilingOilUsed = true;
     } else {
-      if (!team.boilingOilUsed && team.activeBuffs.has("boiling_oil")) {
-        block += scaledBuff(ROUND_BUFF_BASE, rn);
-        team.boilingOilUsed = true;
-      }
-      if (!team.ironCurtainUsed && team.activeBuffs.has("iron_curtain")) {
-        block += scaledBuff(FINISHER_BASE, rn);
-        team.ironCurtainUsed = true;
-      }
+      block += calamityTeamBuffs(team, rn);
+      if (team.activeBuffs.has("iron_curtain")) team.ironCurtainUsed = true;
+      if (team.activeBuffs.has("boiling_oil")) team.boilingOilUsed = true;
     }
     let damage = Math.max(0, assault + prepExtra - block - SIEGE_SOAK);
     if (CASTLE_DESTROY_MIN_ROUND > 1 && rn < CASTLE_DESTROY_MIN_ROUND) {
