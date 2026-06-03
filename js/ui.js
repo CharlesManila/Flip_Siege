@@ -464,6 +464,8 @@ export function renderBoard(game, hooks) {
         ${cdLine}
         ${t.permanent ? `<div class="perm-badge">${PERMANENT_NAMES[t.permanent]} (${t.permanentColor})</div>` : ""}
         ${[...t.activeBuffs].map((b) => `<span class="buff">${b}</span>`).join("")}
+        ${t.siegeCharges > 0 ? `<span class="buff kit">Siege ${t.siegeCharges}⚡</span>` : ""}
+        ${t.defenseCharges > 0 ? `<span class="buff kit">Wall ${t.defenseCharges}⚡</span>` : ""}
       </div>`;
   }
 
@@ -499,6 +501,11 @@ export function renderBoard(game, hooks) {
   );
   if (game.phase === "calamity_reveal") {
     const step = game.calamityReveal?.step;
+    $("#kit-charge-bar")?.classList.toggle("hidden", step !== "defend" || !humanMustPlay(game));
+    if (step === "defend" && humanMustPlay(game)) {
+      const p = game.players.find((x) => x.human);
+      renderKitChargeBar(game, p, false, true);
+    }
     if (step === "deck") {
       prompt.textContent =
         "Calamity — review the deck assault, then choose your defense.";
@@ -541,6 +548,45 @@ export function renderBoard(game, hooks) {
     game.phase !== "armory" || game.subphase === "armory_draft",
   );
   $("#btn-play-again")?.classList.toggle("hidden", game.phase !== "gameover");
+}
+
+function renderKitChargeBar(game, player, siege, calamityDef) {
+  const bar = $("#kit-charge-bar");
+  if (!bar) return;
+  const team = game.teams[player.teamId];
+  const showSiege = siege && (team.siegeCharges ?? 0) > 0;
+  const showDef = (calamityDef || !siege) && (team.defenseCharges ?? 0) > 0;
+  if (!showSiege && !showDef) {
+    bar.classList.add("hidden");
+    return;
+  }
+  if (game.spendSiegeChargeNext === undefined) game.spendSiegeChargeNext = true;
+  if (game.spendDefenseChargeNext === undefined) game.spendDefenseChargeNext = true;
+  bar.classList.remove("hidden");
+  let html = "";
+  if (showSiege) {
+    html += `<label class="kit-charge-opt"><input type="checkbox" id="chk-spend-siege" ${
+      game.spendSiegeChargeNext !== false ? "checked" : ""
+    } /> Spend Siege Charge (${team.siegeCharges} left)</label>`;
+  }
+  if (showDef) {
+    html += `<label class="kit-charge-opt"><input type="checkbox" id="chk-spend-defense" ${
+      game.spendDefenseChargeNext !== false ? "checked" : ""
+    } /> Spend Wall Charge (${team.defenseCharges} left)</label>`;
+  }
+  bar.innerHTML = html;
+  const chkS = bar.querySelector("#chk-spend-siege");
+  const chkD = bar.querySelector("#chk-spend-defense");
+  if (chkS) {
+    chkS.onchange = (e) => {
+      game.spendSiegeChargeNext = e.target.checked;
+    };
+  }
+  if (chkD) {
+    chkD.onchange = (e) => {
+      game.spendDefenseChargeNext = e.target.checked;
+    };
+  }
 }
 
 const SLOT_META = {

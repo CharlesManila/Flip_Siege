@@ -423,9 +423,9 @@
     <!-- ========== COMBAT ========== -->
     <h2 id="combat">9. Assault, Block &amp; damage</h2>
     <h3>Assault (siege team)</h3>
-    <p>Sum <strong>monster ranks</strong> of led-color monsters played by the sieging team, plus <strong>round-long</strong> Armory assault auras (War Drums / Siege Breaker on every siege trick; Siege Breaker also spikes the first siege), plus Permanent bonuses (§13).</p>
+    <p>Sum <strong>monster ranks</strong> of led-color monsters played by the sieging team, plus optional <strong>Siege Charge</strong> spends from yellow kits (§12), plus Permanent bonuses (§13).</p>
     <h3>Block (defense team)</h3>
-    <p>Sum <strong>tower ranks</strong> of led-color towers played by the defending team, plus round-long defense auras (Boiling Oil / Iron Curtain on every defense trick and calamity), plus Permanent bonuses.</p>
+    <p>Sum <strong>tower ranks</strong> of led-color towers played by the defending team, plus optional <strong>Wall Charge</strong> spends from blue kits, plus Permanent bonuses.</p>
     <h3>Damage</h3>
     <p><strong>Damage = Assault − Block</strong> (minimum 0). Apply to the <strong>defending team’s castle</strong>. There is <strong>no</strong> rule that castles must stop at 1 HP in early rounds — if Assault overwhelms Block, the castle can fall.</p>
     <h3>Combat tier (round 5+ massacre)</h3>
@@ -455,7 +455,7 @@
       <thead><tr><th>Tier</th><th>Pay with</th><th>Examples</th></tr></thead>
       <tbody>
         <tr><td>Visit (instant)</td><td><strong>Green</strong> / <strong>Red</strong></td><td>Repair 3G · Red depth 3R / 7R / 11R</td></tr>
-        <tr><td>Round (next round)</td><td><strong>Blue</strong> / <strong>Yellow</strong></td><td>War Drums 6Y · Boiling Oil 6B · finishers 12</td></tr>
+        <tr><td>Round (next round)</td><td><strong>Blue</strong> / <strong>Yellow</strong></td><td>Combat kits — spend charges per trick (§12)</td></tr>
         <tr><td>Finishers</td><td><strong>Blue</strong> / <strong>Yellow</strong> (round 5+)</td><td>Siege Breaker 18Y · Iron Curtain 18B</td></tr>
         <tr><td>Permanent (once)</td><td><strong>All four colors</strong></td><td>See §13 (unlock round 4 Armory)</td></tr>
       </tbody>
@@ -482,9 +482,9 @@
     <h2 id="armory">12. Armory (worker draft)</h2>
     <p>After each round, run a <strong>worker draft</strong>: four players pick in <strong>trick-1 order</strong> for the upcoming round (siege lead → defender → siege partner → defender). Each pick: place a worker on one color station and buy, or <strong>pass</strong> (worker leaves the board).</p>
     <ul>
-      <li><strong>Green</strong> — repair (scaled green cost, choose HP healed).</li>
-      <li><strong>Yellow</strong> — War Drums or Siege Breaker (round 5+).</li>
-      <li><strong>Blue</strong> — Boiling Oil or Iron Curtain (round 5+). <strong>One blue worker globally</strong> per draft.</li>
+      <li><strong>Green</strong> — repair kit: Patch +2 (5G), Field +4 (9G), or Bastion +5 (12G).</li>
+      <li><strong>Yellow</strong> — siege kit: War Drums (5 charges) or Siege Breaker (3 charges + first-siege finisher, round 5+).</li>
+      <li><strong>Blue</strong> — wall kit: Boiling Oil (5 charges) or Iron Curtain (3 charges + calamity finisher, round 5+). <strong>One blue worker globally</strong> per draft.</li>
       <li><strong>Red</strong> — cool low reserve cards (rank 1, rank 2, or both) into <strong>next-deal cooldown</strong>. <strong>One red worker globally</strong> per draft.</li>
       <li><strong>No Vault station</strong> in the live game.</li>
       <li>Cannot return to the <strong>same color station</strong> you just left on your previous pick.</li>
@@ -504,9 +504,9 @@
     <table>
       <thead><tr><th>Station</th><th>Cost</th><th>Effect</th></tr></thead>
       <tbody>
-        <tr><td>Green repair</td><td>4G ×2.2 per HP (max +5)</td><td>Heal now</td></tr>
-        <tr><td>Yellow</td><td>6Y / 12Y</td><td>War Drums: +2 Assault every siege trick · Siege Breaker: +3 every siege, +9 first (r5+)</td></tr>
-        <tr><td>Blue</td><td>6B / 12B</td><td>Boiling Oil: +2 Block every defense &amp; calamity · Iron Curtain: +3 + calamity +9 (r5+)</td></tr>
+        <tr><td>Green repair</td><td>5G / 9G / 12G</td><td>+2 / +4 / +5 HP (one kit per visit)</td></tr>
+        <tr><td>Yellow</td><td>7Y / 13Y</td><td>War Drums: 5 Siege Charges (+3 Assault each, + tier) · Siege Breaker: 3 charges (+5), +9 first siege (r5+)</td></tr>
+        <tr><td>Blue</td><td>7B / 13B</td><td>Boiling Oil: 5 Wall Charges (+3 Block) · Iron Curtain: 3 charges (+5), +9 on calamity (r5+)</td></tr>
         <tr><td>Red depth tradeoff</td><td>3R / 7R / 11R</td><td>Cool reserve cards with rank-1, rank-2, or both (monster/tower) for next deal; this lowers depth prep but improves deal quality</td></tr>
       </tbody>
     </table>

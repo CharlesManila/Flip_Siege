@@ -473,6 +473,28 @@ body {
   box-shadow: 0 0 0 1px #0008;
 }
 
+.kit-charge-bar {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  padding: 0.35rem 1rem 0.5rem;
+  font-size: 0.85rem;
+}
+.kit-charge-bar.hidden {
+  display: none;
+}
+.kit-charge-opt {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+.buff.kit {
+  border-color: #e8c547;
+  color: #ffe9a8;
+}
+
 .btn-menu {
   font-family: inherit;
   font-size: 0.9rem;

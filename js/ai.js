@@ -16,6 +16,7 @@ import {
   redCullCost,
   applyRedCullToCooldown,
   redCullFromVisitKey,
+  repairCost,
   assaultValue,
   blockValue,
   canAfford,
@@ -474,7 +475,8 @@ export function scoreArmoryWorkerPick(game, team, teamId, slot, choice) {
   if (slot === "green" && choice?.heal) {
     const heal = Math.min(choice.heal, max - hp);
     if (heal <= 0) return -20;
-    const costG = 4 * 2.2 ** (heal - 1);
+    const cost = repairCost(choice.heal);
+    const costG = cost?.green ?? 99;
     let s = heal * 22;
     if (hp < max * 0.25) s += 50;
     if (hp < max * 0.45) s += 30;
@@ -502,8 +504,8 @@ export function scoreArmoryWorkerPick(game, team, teamId, slot, choice) {
       if (nextCal) s += 12;
       return s;
     }
-    let s = 38 + siegeTricks * 11;
-    if ((t.yellow || 0) < 6) s -= 8;
+    let s = 44 + siegeTricks * 14;
+    if ((t.yellow || 0) < 7) s -= 6;
     return s;
   }
   if (slot === "blue" && choice?.tier) {
@@ -516,10 +518,10 @@ export function scoreArmoryWorkerPick(game, team, teamId, slot, choice) {
       if (nextCal) s += 36;
       return s;
     }
-    let s = 50 + defTricks * 14;
+    let s = 54 + defTricks * 16;
     if (hp < max * 0.5) s += 16;
-    if (nextCal) s += 32;
-    if ((t.blue || 0) < 6) s -= 6;
+    if (nextCal) s += 36;
+    if ((t.blue || 0) < 7) s -= 5;
     return s;
   }
   return -20;

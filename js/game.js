@@ -41,8 +41,11 @@ import {
   rotateRoundCooldown,
   roundEnds,
   scaleCombat,
+  activateCombatKits,
   siegeTeamTrickBuffs,
   defenseTeamTrickBuffs,
+  shouldSpendSiegeCharge,
+  shouldSpendDefenseCharge,
   siegerTeamForTrick,
   trickPlayOrder,
   stashValue,
@@ -85,6 +88,8 @@ function makeTeam(id, deck, hp) {
     activeBuffs: new Set(),
     skipBlueDeal: false,
     marchTax: false,
+    siegeCharges: 0,
+    defenseCharges: 0,
     warDrumsUsed: false,
     boilingOilUsed: false,
     siegeBreakerUsed: false,
@@ -225,6 +230,7 @@ export function dealRound(game) {
     t.ironCurtainUsed = false;
     t.activeBuffs = new Set(t.pendingBuffs);
     t.pendingBuffs = new Set();
+    activateCombatKits(t);
     t.sallyGate = t.activeBuffs.has("sally_gate");
     const plys = teamPlayers(game, t.id);
     const needed = hs * plys.length;
@@ -346,17 +352,30 @@ function resolveTrick(game, plays) {
     if (st.activeBuffs.has("siege_breaker")) st.siegeBreakerUsed = true;
     if (st.activeBuffs.has("war_drums")) st.warDrumsUsed = true;
   } else {
-    assault += siegeTeamTrickBuffs(st, rn, isFirstSiegeTrick);
-    if (isFirstSiegeTrick && st.activeBuffs.has("siege_breaker")) st.siegeBreakerUsed = true;
-    if (st.activeBuffs.has("war_drums")) st.warDrumsUsed = true;
+    const spendSiege =
+      game.trickSpendSiege ??
+      shouldSpendSiegeCharge(st, assault, block, rn);
+    assault += siegeTeamTrickBuffs(st, rn, isFirstSiegeTrick, spendSiege);
+    if (isFirstSiegeTrick && st.activeBuffs.has("siege_breaker")) {
+      st.siegeBreakerUsed = true;
+    }
+    if (spendSiege && (st.activeBuffs.has("war_drums") || st.activeBuffs.has("siege_breaker"))) {
+      st.warDrumsUsed = true;
+    }
+    game.trickSpendSiege = undefined;
   }
   if (sigilEliteDefense) {
     if (dt.activeBuffs.has("iron_curtain")) dt.ironCurtainUsed = true;
     if (dt.activeBuffs.has("boiling_oil")) dt.boilingOilUsed = true;
   } else {
-    block += defenseTeamTrickBuffs(dt, rn, isFirstDefenseTrick);
-    if (isFirstDefenseTrick && dt.activeBuffs.has("iron_curtain")) dt.ironCurtainUsed = true;
-    if (dt.activeBuffs.has("boiling_oil")) dt.boilingOilUsed = true;
+    const spendDef =
+      game.trickSpendDefense ??
+      shouldSpendDefenseCharge(dt, assault, block, rn, false);
+    block += defenseTeamTrickBuffs(dt, rn, isFirstDefenseTrick, spendDef);
+    if (spendDef && (dt.activeBuffs.has("boiling_oil") || dt.activeBuffs.has("iron_curtain"))) {
+      dt.boilingOilUsed = true;
+    }
+    game.trickSpendDefense = undefined;
   }
 
   let damage = Math.max(0, assault - block);
@@ -529,6 +548,32 @@ function advanceTrickStep(game, singleStep = false) {
     const led = game.ledColor || (game.trickPlays[0]?.card.color ?? "green");
     const card = pickCard(game, p, led, siege, isLead);
     p.hand = p.hand.filter((c) => c.id !== card.id);
+    if (siege && p.teamId === game.siegerTeam && game.teams[p.teamId].siegeCharges > 0) {
+      const st = game.teams[p.teamId];
+      let estA = 0;
+      let estB = 0;
+      for (const { player, card: c, siege: sg } of game.trickPlays) {
+        if (sg) estA += scaleCombat(assaultValue(c, led, game.teams[player.teamId], game.round, {}), game.round);
+        else estB += scaleCombat(blockValue(c, led, game.teams[player.teamId], game.round, {}), game.round);
+      }
+      estA += scaleCombat(assaultValue(card, led, st, game.round, {}), game.round);
+      if (shouldSpendSiegeCharge(st, estA, estB, game.round)) {
+        game.trickSpendSiege = true;
+      }
+    }
+    if (!siege && p.teamId !== game.siegerTeam && game.teams[p.teamId].defenseCharges > 0) {
+      const dt = game.teams[p.teamId];
+      let estA = 0;
+      let estB = 0;
+      for (const { player, card: c, siege: sg } of game.trickPlays) {
+        if (sg) estA += scaleCombat(assaultValue(c, led, game.teams[player.teamId], game.round, {}), game.round);
+        else estB += scaleCombat(blockValue(c, led, game.teams[player.teamId], game.round, {}), game.round);
+      }
+      estB += scaleCombat(blockValue(card, led, dt, game.round, {}), game.round);
+      if (shouldSpendDefenseCharge(dt, estA, estB, game.round, false)) {
+        game.trickSpendDefense = true;
+      }
+    }
     game.trickPlays.push({ player: p, card, siege });
     recordCardPlayed(game, card, p.teamId);
     if (!game.ledColor) game.ledColor = card.color;
@@ -552,6 +597,15 @@ export function playHumanCard(game, cardId) {
   p.hand = p.hand.filter((c) => c.id !== card.id);
   const siege =
     game.phase === "calamity_reveal" ? false : p.teamId === game.siegerTeam;
+  if (siege && game.teams[p.teamId].siegeCharges > 0) {
+    game.trickSpendSiege = game.spendSiegeChargeNext !== false;
+  } else if (
+    !siege &&
+    game.phase !== "calamity_reveal" &&
+    game.teams[p.teamId].defenseCharges > 0
+  ) {
+    game.trickSpendDefense = game.spendDefenseChargeNext !== false;
+  }
   game.trickPlays.push({ player: p, card, siege });
   recordCardPlayed(game, card, p.teamId);
   recordHumanCardPlay(game, card, {

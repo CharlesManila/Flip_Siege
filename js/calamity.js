@@ -11,6 +11,7 @@ import {
   isSigilElite,
   scaleCombat,
   calamityTeamBuffs,
+  shouldSpendDefenseCharge,
   SIEGE_SOAK,
   CASTLE_DESTROY_MIN_ROUND,
 } from "./rules.js";
@@ -134,9 +135,15 @@ export function resolveCalamityFromPlays(game, trickPlays) {
       if (team.activeBuffs.has("iron_curtain")) team.ironCurtainUsed = true;
       if (team.activeBuffs.has("boiling_oil")) team.boilingOilUsed = true;
     } else {
-      block += calamityTeamBuffs(team, rn);
+      const spendDef =
+        game.trickSpendDefense ??
+        shouldSpendDefenseCharge(team, assault + prepExtra, block, rn, true);
+      block += calamityTeamBuffs(team, rn, spendDef);
       if (team.activeBuffs.has("iron_curtain")) team.ironCurtainUsed = true;
-      if (team.activeBuffs.has("boiling_oil")) team.boilingOilUsed = true;
+      if (spendDef && (team.activeBuffs.has("boiling_oil") || team.activeBuffs.has("iron_curtain"))) {
+        team.boilingOilUsed = true;
+      }
+      game.trickSpendDefense = undefined;
     }
     let damage = Math.max(0, assault + prepExtra - block - SIEGE_SOAK);
     if (CASTLE_DESTROY_MIN_ROUND > 1 && rn < CASTLE_DESTROY_MIN_ROUND) {

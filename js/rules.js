@@ -14,22 +14,25 @@ export const SIEGE_SOAK = 0;
 export const TIER_R5 = 5;
 export const TIER_R6 = 10;
 export const FINISHER_BASE = 9;
-/** @deprecated first-trick-only; use round auras below */
+/** @deprecated */
 export const ROUND_BUFF_BASE = 2;
-/** Per siege trick while War Drums / Siege Breaker aura active */
-export const ROUND_AURA_ASSAULT_LOW = 2;
-export const ROUND_AURA_ASSAULT_HIGH = 3;
-/** Per defense trick + calamity while Oil / Curtain active */
-export const ROUND_AURA_BLOCK_LOW = 2;
-export const ROUND_AURA_BLOCK_HIGH = 3;
 
-/** Four-slot worker board (matches sim lowered costs). */
+/** Combat kits: spend 1 charge per trick for a big swing (+ tier). */
+export const KIT_SIEGE_CHARGES = { war_drums: 5, siege_breaker: 3 };
+export const KIT_DEFENSE_CHARGES = { boiling_oil: 5, iron_curtain: 3 };
+export const KIT_CHARGE_ASSAULT = { war_drums: 3, siege_breaker: 5 };
+export const KIT_CHARGE_BLOCK = { boiling_oil: 3, iron_curtain: 5 };
+
+/** Flat green repair tiers (pick one per Green visit). */
+export const GREEN_REPAIR_TIERS = [
+  { heal: 2, cost: { green: 5 } },
+  { heal: 4, cost: { green: 9 } },
+  { heal: 5, cost: { green: 12 } },
+];
+
+/** Four-slot worker board (matches sim). */
 export const ARMORY_SLOTS = ["green", "yellow", "blue", "red"];
 export const ARMORY_GLOBAL_EXCLUSIVE = new Set(["red", "blue"]);
-export const GREEN_REPAIR_BASE = 4;
-export const GREEN_REPAIR_MULT = 2.2;
-export const RED_BENCH_BASE = 3;
-export const RED_BENCH_MULT = 2.35;
 export const MAX_REPAIR_PER_VISIT = 5;
 export const MAX_BENCH_PER_VISIT = 3;
 export const FOUR_SLOT_PICK_THRESHOLD = 8;
@@ -45,7 +48,7 @@ export function trophyResourceGain(faceValue) {
 }
 
 /** Max total resources per team (all colors); excess income is lost. */
-export const TEAM_RESOURCE_CAP = 28;
+export const TEAM_RESOURCE_CAP = 24;
 
 export function emptyResources() {
   return { green: 0, blue: 0, red: 0, yellow: 0 };
@@ -57,17 +60,17 @@ export function ensureTeamResources(team) {
 }
 
 export const YELLOW_ATTACK_TIERS = {
-  low: { buff: "war_drums", cost: { yellow: 6 }, minRound: 1 },
-  high: { buff: "siege_breaker", cost: { yellow: 12 }, minRound: 5 },
+  low: { buff: "war_drums", cost: { yellow: 7 }, minRound: 1 },
+  high: { buff: "siege_breaker", cost: { yellow: 13 }, minRound: 5 },
 };
 export const BLUE_DEFENSE_TIERS = {
-  low: { buff: "boiling_oil", cost: { blue: 6 }, minRound: 1 },
-  high: { buff: "iron_curtain", cost: { blue: 12 }, minRound: 5 },
+  low: { buff: "boiling_oil", cost: { blue: 7 }, minRound: 1 },
+  high: { buff: "iron_curtain", cost: { blue: 13 }, minRound: 5 },
 };
 
 export function repairCost(heal) {
-  const g = Math.max(1, Math.round(GREEN_REPAIR_BASE * GREEN_REPAIR_MULT ** (heal - 1)));
-  return { green: g };
+  const tier = GREEN_REPAIR_TIERS.find((t) => t.heal === heal);
+  return tier ? { ...tier.cost } : null;
 }
 
 export function benchCost(n) {
@@ -173,7 +176,7 @@ export function isSlotOccupiedForPlayer(game, slot, player) {
 /** Every purchasable variant at a station (for UI catalog). */
 export function fourSlotChoiceCatalog(_game, _team, slot) {
   if (slot === "green") {
-    return Array.from({ length: MAX_REPAIR_PER_VISIT }, (_, i) => ({ heal: i + 1 }));
+    return GREEN_REPAIR_TIERS.map((t) => ({ heal: t.heal }));
   }
   if (slot === "red") {
     return [
@@ -194,10 +197,11 @@ export function fourSlotChoiceCatalog(_game, _team, slot) {
 export function fourSlotChoicePresentation(game, team, slot, choice) {
   const rn = game.round;
   if (slot === "green" && choice?.heal) {
+    const names = { 2: "Patch", 4: "Field Repair", 5: "Bastion" };
     return {
-      label: `Repair +${choice.heal} HP`,
+      label: `${names[choice.heal] || "Repair"} +${choice.heal} HP`,
       cost: repairCost(choice.heal),
-      desc: `Heal up to +${MAX_REPAIR_PER_VISIT} HP this visit (scaled green cost).`,
+      desc: "One repair kit per Green visit — compare vs saving green for later.",
     };
   }
   if (slot === "red" && choice?.cull) {
@@ -219,8 +223,8 @@ export function fourSlotChoicePresentation(game, team, slot, choice) {
       cost: cost || (choice.tier === "high" ? YELLOW_ATTACK_TIERS.high.cost : YELLOW_ATTACK_TIERS.low.cost),
       desc:
         choice.tier === "high"
-          ? "+2 Assault every siege trick; first siege also +9 (+ tier). Round 5+."
-          : "+1 Assault on every siege trick next round (+ tier).",
+          ? "3 Siege Charges (+5 Assault each, + tier). First siege +9 finisher. Round 5+."
+          : "5 Siege Charges (+3 Assault each, + tier) — spend one per siege trick.",
     };
   }
   if (slot === "blue" && choice?.tier) {
@@ -230,8 +234,8 @@ export function fourSlotChoicePresentation(game, team, slot, choice) {
       cost: cost || (choice.tier === "high" ? BLUE_DEFENSE_TIERS.high.cost : BLUE_DEFENSE_TIERS.low.cost),
       desc:
         choice.tier === "high"
-          ? "+3 Block every defense & calamity; calamity also +9 (+ tier). Round 5+."
-          : "+2 Block on every defense trick and calamity next round (+ tier).",
+          ? "3 Defense Charges (+5 Block each). Calamity +9 finisher. Round 5+."
+          : "5 Defense Charges (+3 Block each) — spend on defense tricks or calamity.",
     };
   }
   return { label: "", cost: {}, desc: "" };
@@ -248,6 +252,7 @@ export function fourSlotChoicePurchasable(game, team, slot, choice, opts = {}) {
       return { ok: false, reason: `Need ${heal} missing HP (have ${team.castleMax - team.castleHp}).` };
     }
     const cost = repairCost(heal);
+    if (!cost) return { ok: false, reason: "Invalid repair tier." };
     if (!canAfford(team, cost)) return { ok: false, reason: "Not enough green resources." };
     return { ok: true };
   }
@@ -485,62 +490,114 @@ export function isSigilElite(card, team) {
   );
 }
 
+/** Grant siege/defense charges when round buffs activate (after Armory). */
+export function activateCombatKits(team) {
+  team.siegeCharges = 0;
+  team.defenseCharges = 0;
+  if (!team.activeBuffs) return;
+  if (team.activeBuffs.has("war_drums")) {
+    team.siegeCharges = KIT_SIEGE_CHARGES.war_drums;
+  } else if (team.activeBuffs.has("siege_breaker")) {
+    team.siegeCharges = KIT_SIEGE_CHARGES.siege_breaker;
+  }
+  if (team.activeBuffs.has("boiling_oil")) {
+    team.defenseCharges = KIT_DEFENSE_CHARGES.boiling_oil;
+  } else if (team.activeBuffs.has("iron_curtain")) {
+    team.defenseCharges = KIT_DEFENSE_CHARGES.iron_curtain;
+  }
+}
+
+export function spendSiegeChargeBonus(team, round) {
+  if (!team.activeBuffs || (team.siegeCharges ?? 0) <= 0) return 0;
+  team.siegeCharges -= 1;
+  let b = 0;
+  if (team.activeBuffs.has("war_drums")) {
+    b += scaledBuff(KIT_CHARGE_ASSAULT.war_drums, round);
+  }
+  if (team.activeBuffs.has("siege_breaker")) {
+    b += scaledBuff(KIT_CHARGE_ASSAULT.siege_breaker, round);
+  }
+  return b;
+}
+
+export function spendDefenseChargeBonus(team, round) {
+  if (!team.activeBuffs || (team.defenseCharges ?? 0) <= 0) return 0;
+  team.defenseCharges -= 1;
+  let b = 0;
+  if (team.activeBuffs.has("boiling_oil")) {
+    b += scaledBuff(KIT_CHARGE_BLOCK.boiling_oil, round);
+  }
+  if (team.activeBuffs.has("iron_curtain")) {
+    b += scaledBuff(KIT_CHARGE_BLOCK.iron_curtain, round);
+  }
+  return b;
+}
+
+export function siegeFinisherBuff(team, round, isFirstSiegeTrick) {
+  if (
+    isFirstSiegeTrick &&
+    team.activeBuffs?.has("siege_breaker")
+  ) {
+    return scaledBuff(FINISHER_BASE, round);
+  }
+  return 0;
+}
+
+export function calamityFinisherBuff(team, round) {
+  if (team.activeBuffs?.has("iron_curtain")) {
+    return scaledBuff(FINISHER_BASE, round);
+  }
+  return 0;
+}
+
 function sigilEliteSiegeBuffs(team, round, isFirstSiegeTrick) {
-  if (!isFirstSiegeTrick || !team.activeBuffs) return 0;
-  let b = 0;
-  if (team.activeBuffs.has("war_drums")) b += scaledBuff(ROUND_AURA_ASSAULT_LOW, round);
-  if (team.activeBuffs.has("siege_breaker")) {
-    b += scaledBuff(ROUND_AURA_ASSAULT_HIGH, round);
-    b += scaledBuff(FINISHER_BASE, round);
-  }
-  return b;
+  return siegeFinisherBuff(team, round, isFirstSiegeTrick);
 }
 
-function sigilEliteDefenseBuffs(team, round, isFirstDefenseTrick) {
-  if (!isFirstDefenseTrick || !team.activeBuffs) return 0;
-  let b = 0;
-  if (team.activeBuffs.has("boiling_oil")) b += scaledBuff(ROUND_AURA_BLOCK_LOW, round);
-  if (team.activeBuffs.has("iron_curtain")) {
-    b += scaledBuff(ROUND_AURA_BLOCK_HIGH, round);
-    b += scaledBuff(FINISHER_BASE, round);
-  }
-  return b;
-}
-
-/** Round buffs for sieging team (every trick; finisher spike on first siege). */
-export function siegeTeamTrickBuffs(team, round, isFirstSiegeTrick) {
+/** Siege kit: optional charge spend + Siege Breaker finisher on first siege trick. */
+export function siegeTeamTrickBuffs(team, round, isFirstSiegeTrick, spendCharge = false) {
   if (!team.activeBuffs) return 0;
-  let b = 0;
-  if (team.activeBuffs.has("war_drums")) b += scaledBuff(ROUND_AURA_ASSAULT_LOW, round);
-  if (team.activeBuffs.has("siege_breaker")) {
-    b += scaledBuff(ROUND_AURA_ASSAULT_HIGH, round);
-    if (isFirstSiegeTrick) b += scaledBuff(FINISHER_BASE, round);
-  }
+  let b = siegeFinisherBuff(team, round, isFirstSiegeTrick);
+  if (spendCharge) b += spendSiegeChargeBonus(team, round);
   return b;
 }
 
-/** Round buffs for defending team (every defense trick). */
-export function defenseTeamTrickBuffs(team, round, isFirstDefenseTrick) {
+/** Defense kit: optional charge spend (Iron Curtain finisher is on calamity only). */
+export function defenseTeamTrickBuffs(team, round, _isFirstDefenseTrick, spendCharge = false) {
   if (!team.activeBuffs) return 0;
-  let b = 0;
-  if (team.activeBuffs.has("boiling_oil")) b += scaledBuff(ROUND_AURA_BLOCK_LOW, round);
-  if (team.activeBuffs.has("iron_curtain")) {
-    b += scaledBuff(ROUND_AURA_BLOCK_HIGH, round);
-    if (isFirstDefenseTrick) b += scaledBuff(FINISHER_BASE, round);
-  }
+  if (spendCharge) return spendDefenseChargeBonus(team, round);
+  return 0;
+}
+
+/** Calamity: Iron Curtain finisher + optional defense charge. */
+export function calamityTeamBuffs(team, round, spendCharge = false) {
+  if (!team.activeBuffs) return 0;
+  let b = calamityFinisherBuff(team, round);
+  if (spendCharge) b += spendDefenseChargeBonus(team, round);
   return b;
 }
 
-/** Calamity defense buffs (Oil aura + Curtain aura & finisher). */
-export function calamityTeamBuffs(team, round) {
-  if (!team.activeBuffs) return 0;
-  let b = 0;
-  if (team.activeBuffs.has("boiling_oil")) b += scaledBuff(ROUND_AURA_BLOCK_LOW, round);
-  if (team.activeBuffs.has("iron_curtain")) {
-    b += scaledBuff(ROUND_AURA_BLOCK_HIGH, round);
-    b += scaledBuff(FINISHER_BASE, round);
-  }
-  return b;
+/** AI / UI: spend a siege charge this trick when it likely flips or closes damage. */
+export function shouldSpendSiegeCharge(team, assault, block, round) {
+  if ((team.siegeCharges ?? 0) <= 0 || !team.activeBuffs) return false;
+  const swing = team.activeBuffs.has("siege_breaker")
+    ? scaledBuff(KIT_CHARGE_ASSAULT.siege_breaker, round)
+    : scaledBuff(KIT_CHARGE_ASSAULT.war_drums, round);
+  if (assault + swing >= block + 2) return true;
+  if (team.siegeCharges <= 1) return true;
+  return assault + swing >= block;
+}
+
+/** Spend defense charge when block gap is tight or on last charge before calamity. */
+export function shouldSpendDefenseCharge(team, assault, block, round, isCalamity = false) {
+  if ((team.defenseCharges ?? 0) <= 0 || !team.activeBuffs) return false;
+  const swing = team.activeBuffs.has("iron_curtain")
+    ? scaledBuff(KIT_CHARGE_BLOCK.iron_curtain, round)
+    : scaledBuff(KIT_CHARGE_BLOCK.boiling_oil, round);
+  if (isCalamity) return true;
+  if (assault > 0 && block + swing >= assault) return true;
+  if (team.defenseCharges <= 1) return true;
+  return assault > block && block + swing >= assault - 1;
 }
 
 /**
@@ -572,11 +629,7 @@ export function blockValue(card, led, team, round, ctx = null) {
   if (card.color !== led) return 0;
   const tier = armoryTier(round);
   if (isSigilElite(card, team)) {
-    let base = card.tr + tier;
-    if (ctx?.isFirstDefenseTrick) {
-      base += sigilEliteDefenseBuffs(team, round, true);
-    }
-    return base * 2;
+    return (card.tr + tier) * 2;
   }
   let flat = 0;
   if (team.permanent === "mastery" && team.permanentColor === led) {
