@@ -20,16 +20,20 @@ import {
   fourSlotChoicePurchasable,
   canAfford,
   isSlotOccupiedForPlayer,
+  armoryStationWorker,
+  ARMORY_GLOBAL_EXCLUSIVE,
+  CALAMITY_PREP_MIN_RESERVE,
   repairCost,
   stashTotals,
   resourceTotal,
   TEAM_RESOURCE_CAP,
   yellowAttackTierCost,
   blueDefenseTierCost,
+  canFollow,
 } from "./rules.js";
 import { armoryDraftPlayerId, humanArmoryDraftTurn } from "./armoryDraft.js";
 import { humanMustPlay, isCalamityLead } from "./game.js";
-import { canFollow } from "./rules.js";
+import { formatCalamityBlockSummary, formatReserveDepth } from "./calamity.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 
@@ -121,7 +125,7 @@ function teamLabel(teamId) {
   return teamId === 0 ? "Your reserve" : "Enemy reserve";
 }
 
-function appendCalamityDeckSection(el, r) {
+function appendCalamityDeckSection(el, r, game) {
   const deckSec = document.createElement("section");
   deckSec.className = "calamity-deck";
   deckSec.innerHTML = `<h4 class="calamity-section-title">Deck assault (from reserves)</h4>`;
@@ -143,6 +147,15 @@ function appendCalamityDeckSection(el, r) {
   deckRow.appendChild(plus);
   addDeckCard(r.c2, r.deck2Team, "Adds monster rank");
   deckSec.appendChild(deckRow);
+
+  if (r.reserveDepth) {
+    const depthRow = document.createElement("p");
+    depthRow.className = "calamity-reserve-depths small";
+    const yours = r.reserveDepth[0] ?? game.teams[0].reserve.length;
+    const theirs = r.reserveDepth[1] ?? game.teams[1].reserve.length;
+    depthRow.innerHTML = `Reserve after flip: <strong>You ${yours}</strong> · <strong>Enemies ${theirs}</strong> (prep needs ≥${CALAMITY_PREP_MIN_RESERVE})`;
+    deckSec.appendChild(depthRow);
+  }
 
   const sum = r.rankSum ?? r.c1.mr + r.c2.mr;
   const assaultLine = document.createElement("p");
@@ -170,7 +183,7 @@ function renderCalamityCenter(game, hooks) {
     <span class="trick-led color-${r.led}">Led color: <strong>${COLOR_LABELS[r.led] || r.led}</strong></span>`;
   el.appendChild(header);
 
-  appendCalamityDeckSection(el, r);
+  appendCalamityDeckSection(el, r, game);
 
   if (r.step === "deck") {
     const btn = document.createElement("button");
@@ -222,12 +235,17 @@ function renderCalamityCenter(game, hooks) {
       col.className = `calamity-team-col team-${tr.teamId}`;
       const prepNote =
         tr.prepExtra > 0
-          ? `<span class="calamity-penalty">Underprepared: +${tr.prepExtra} damage</span>`
-          : `<span class="calamity-prep-ok">Reserve prep: +${tr.reservePrep} block</span>`;
+          ? `<span class="calamity-penalty">Underprepared reserve: +${tr.prepExtra} damage to block</span>`
+          : "";
+      const { breakdown, vs } = formatCalamityBlockSummary(tr);
       col.innerHTML = `
         <div class="calamity-team-head">${escapeHtml(tr.label)}</div>
+        ${depthNote}
         ${prepNote}
-        <div class="calamity-result">Block <strong>${tr.block}</strong> → <strong>${tr.damage}</strong> damage</div>`;
+        <div class="calamity-result">
+          Block <strong>${tr.block}</strong>${escapeHtml(breakdown)} → <strong>${tr.damage}</strong> damage
+          <span class="calamity-vs">vs ${escapeHtml(vs)}</span>
+        </div>`;
       const cards = document.createElement("div");
       cards.className = "calamity-defense-cards";
       for (const d of tr.defenses) {
@@ -664,13 +682,21 @@ function renderArmoryDraft(game, hooks) {
     const meta = SLOT_META[slot];
     const cell = document.createElement("div");
     cell.className = `armory-station station-${slot}`;
-    const occupant = game.players.find((p) => p.workerSlot === slot);
     let occText = "Open";
-    if (occupant) {
-      occText =
-        occupant.teamId === 0
-          ? `${occupant.name} (your team)`
-          : `${occupant.name} (enemies)`;
+    if (ARMORY_GLOBAL_EXCLUSIVE.has(slot)) {
+      const occupant = armoryStationWorker(game, slot);
+      if (occupant) {
+        occText = `${occupant.name} (global — blocks all players)`;
+      } else {
+        occText = "Open (one worker globally)";
+      }
+    } else {
+      const t0 = armoryStationWorker(game, slot, 0);
+      const t1 = armoryStationWorker(game, slot, 1);
+      const parts = [];
+      if (t0) parts.push(`${t0.name} (your team)`);
+      if (t1) parts.push(`${t1.name} (enemies)`);
+      occText = parts.length ? parts.join(" · ") : "Open (one worker per team)";
     }
     const blocked =
       human &&
@@ -690,7 +716,11 @@ function renderArmoryDraft(game, hooks) {
       const note = document.createElement("div");
       note.className = "station-locked-note";
       note.textContent =
-        human.lastWorkerSlot === slot ? "Cannot repeat your last station" : "Occupied";
+        human.lastWorkerSlot === slot
+          ? "Cannot repeat your last station"
+          : ARMORY_GLOBAL_EXCLUSIVE.has(slot)
+            ? "Taken (one worker globally)"
+            : "Taken (one worker per team)";
       cell.appendChild(note);
     }
     grid.appendChild(cell);

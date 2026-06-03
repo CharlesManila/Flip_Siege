@@ -17,6 +17,7 @@ import {
   applyRedCullToCooldown,
   redCullFromVisitKey,
   repairCost,
+  fourSlotChoicePresentation,
   assaultValue,
   blockValue,
   canAfford,
@@ -464,6 +465,17 @@ function armoryActionScore(game, team, teamId, key) {
   return 10;
 }
 
+function armoryPickCostPenalty(game, team, slot, choice) {
+  const { cost } = fourSlotChoicePresentation(game, team, slot, choice);
+  if (!cost || !canAfford(team, cost)) return 1e9;
+  let pen = 0;
+  for (const [color, n] of Object.entries(cost)) {
+    const have = stashTotals(team)[color] || 0;
+    pen += n * 3 + Math.max(0, n - have) * 50;
+  }
+  return pen;
+}
+
 /** Four-slot worker draft EV (slot + choice dict). */
 export function scoreArmoryWorkerPick(game, team, teamId, slot, choice) {
   const hp = team.castleHp;
@@ -471,6 +483,8 @@ export function scoreArmoryWorkerPick(game, team, teamId, slot, choice) {
   const round = game.round;
   const t = stashTotals(team);
   const nextCal = nextRoundIsCalamity(round);
+  const costPen = armoryPickCostPenalty(game, team, slot, choice);
+  if (costPen >= 1e8) return -1e9;
 
   if (slot === "green" && choice?.heal) {
     const heal = Math.min(choice.heal, max - hp);
@@ -482,7 +496,7 @@ export function scoreArmoryWorkerPick(game, team, teamId, slot, choice) {
     if (hp < max * 0.45) s += 30;
     if (nextCal && hp < max * 0.65) s += 25;
     if (hp > max * 0.72) s -= 28;
-    return s - costG * 4;
+    return s - costG * 4 - costPen;
   }
   if (slot === "red" && choice?.cull) {
     const n = redCullCount(team, choice.cull);
@@ -493,7 +507,7 @@ export function scoreArmoryWorkerPick(game, team, teamId, slot, choice) {
     else if (nextCal && choice.cull.value === 2) s -= 8;
     const cost = redCullCost(choice.cull.value, choice.cull.mode);
     const costR = cost.red || 0;
-    return s - costR * 2.5;
+    return s - costR * 2.5 - costPen;
   }
   if (slot === "yellow" && choice?.tier) {
     const mt = maxTricks(game.round + 1);
@@ -502,11 +516,11 @@ export function scoreArmoryWorkerPick(game, team, teamId, slot, choice) {
       if (round < 5 || hp <= max * 0.15) return -15;
       let s = 40 + siegeTricks * 14;
       if (nextCal) s += 12;
-      return s;
+      return s - costPen;
     }
     let s = 44 + siegeTricks * 14;
-    if ((t.yellow || 0) < 7) s -= 6;
-    return s;
+    if ((t.yellow || 0) < 7) s -= 12;
+    return s - costPen;
   }
   if (slot === "blue" && choice?.tier) {
     const mt = maxTricks(game.round + 1);
@@ -516,13 +530,13 @@ export function scoreArmoryWorkerPick(game, team, teamId, slot, choice) {
       let s = 55 + defTricks * 16;
       if (hp < max * 0.5) s += 15;
       if (nextCal) s += 36;
-      return s;
+      return s - costPen;
     }
     let s = 54 + defTricks * 16;
     if (hp < max * 0.5) s += 16;
     if (nextCal) s += 36;
-    if ((t.blue || 0) < 7) s -= 5;
-    return s;
+    if ((t.blue || 0) < 7) s -= 12;
+    return s - costPen;
   }
   return -20;
 }

@@ -11,10 +11,51 @@ import {
   isSigilElite,
   scaleCombat,
   calamityTeamBuffs,
+  calamityFinisherBuff,
+  scaledBuff,
+  KIT_CHARGE_BLOCK,
+  ROUND_LABELS,
   shouldSpendDefenseCharge,
   SIEGE_SOAK,
   CASTLE_DESTROY_MIN_ROUND,
 } from "./rules.js";
+
+/** Kit bonuses applied on calamity resolve (for results breakdown). */
+function calamityKitParts(team, round, spendCharge) {
+  const parts = [];
+  const fin = calamityFinisherBuff(team, round);
+  if (fin > 0) {
+    parts.push({ label: `${ROUND_LABELS.iron_curtain} finisher`, amount: fin });
+  }
+  if (spendCharge && team.activeBuffs) {
+    if (team.activeBuffs.has("iron_curtain")) {
+      parts.push({
+        label: ROUND_LABELS.iron_curtain,
+        amount: scaledBuff(KIT_CHARGE_BLOCK.iron_curtain, round),
+      });
+    } else if (team.activeBuffs.has("boiling_oil")) {
+      parts.push({
+        label: ROUND_LABELS.boiling_oil,
+        amount: scaledBuff(KIT_CHARGE_BLOCK.boiling_oil, round),
+      });
+    }
+  }
+  return parts;
+}
+
+/** Human-readable block total for calamity results UI. */
+export function formatCalamityBlockSummary(tr) {
+  const bits = [];
+  if (tr.reservePrep > 0) bits.push(`prep ${tr.reservePrep}`);
+  if (tr.cardsBlock > 0) bits.push(`cards ${tr.cardsBlock}`);
+  for (const k of tr.kitParts || []) {
+    if (k.amount > 0) bits.push(`${k.label} ${k.amount}`);
+  }
+  const breakdown = bits.length ? ` (${bits.join(" + ")})` : "";
+  let vs = `assault ${tr.assault}`;
+  if (tr.prepExtra > 0) vs += ` + ${tr.prepExtra} underprep`;
+  return { breakdown, vs };
+}
 
 export function calamityAssaultFromRanks(rank1, rank2) {
   return Math.floor((rank1 + rank2) * CALAMITY_ASSAULT_MULT);
@@ -85,8 +126,16 @@ export function startCalamityTrick(game) {
     led,
     assault,
     rankSum: c1.mr + c2.mr,
+    reserveDepth: {
+      0: game.teams[0].reserve.length,
+      1: game.teams[1].reserve.length,
+    },
     teamResults: null,
   };
+}
+
+export function formatReserveDepth(n) {
+  return `${n} card${n === 1 ? "" : "s"} in reserve`;
 }
 
 /** Play order: your team (you, ally), then enemies. */
@@ -110,8 +159,11 @@ export function resolveCalamityFromPlays(game, trickPlays) {
   for (const teamId of [0, 1]) {
     const team = game.teams[teamId];
     const firstDef = !team.boilingOilUsed;
+    const reserveDepth = team.reserve.length;
     const { blockBonus, extra: prepExtra } = calamityReservePrep(team, rn);
     let block = blockBonus;
+    let cardsBlock = 0;
+    let kitParts = [];
     let sigilElite = false;
     const defenses = [];
 
@@ -121,6 +173,7 @@ export function resolveCalamityFromPlays(game, trickPlays) {
         rn,
       );
       block += contrib;
+      cardsBlock += contrib;
       if (contrib > 0 && isSigilElite(card, team)) sigilElite = true;
       defenses.push({
         playerId: player.id,
@@ -138,6 +191,7 @@ export function resolveCalamityFromPlays(game, trickPlays) {
       const spendDef =
         game.trickSpendDefense ??
         shouldSpendDefenseCharge(team, assault + prepExtra, block, rn, true);
+      kitParts = calamityKitParts(team, rn, spendDef);
       block += calamityTeamBuffs(team, rn, spendDef);
       if (team.activeBuffs.has("iron_curtain")) team.ironCurtainUsed = true;
       if (spendDef && (team.activeBuffs.has("boiling_oil") || team.activeBuffs.has("iron_curtain"))) {
@@ -157,9 +211,13 @@ export function resolveCalamityFromPlays(game, trickPlays) {
     teamResults.push({
       teamId,
       label: who,
+      assault,
       block,
       prepExtra,
+      reserveDepth,
       reservePrep: blockBonus,
+      cardsBlock,
+      kitParts,
       damage,
       defenses,
     });

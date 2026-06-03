@@ -167,10 +167,31 @@ export function armoryPickOrder(game) {
   return trickPlayOrder(game, st[0].id, nextSieger);
 }
 
+/** Occupation map key: red/blue global; green/yellow per team. */
+export function armoryOccupationKey(slot, teamId) {
+  return ARMORY_GLOBAL_EXCLUSIVE.has(slot) ? slot : `${slot}:${teamId}`;
+}
+
+/** Who is working this station (null if open). */
+export function armoryStationWorker(game, slot, forTeamId = null) {
+  if (ARMORY_GLOBAL_EXCLUSIVE.has(slot)) {
+    return game.players.find((p) => p.workerSlot === slot) ?? null;
+  }
+  const tid = forTeamId ?? null;
+  return (
+    game.players.find(
+      (p) => p.workerSlot === slot && (tid == null || p.teamId === tid),
+    ) ?? null
+  );
+}
+
 export function isSlotOccupiedForPlayer(game, slot, player) {
-  const takers = game.players.filter((p) => p.workerSlot === slot);
-  if (ARMORY_GLOBAL_EXCLUSIVE.has(slot)) return takers.length > 0;
-  return takers.some((p) => p.teamId === player.teamId);
+  const worker = armoryStationWorker(
+    game,
+    slot,
+    ARMORY_GLOBAL_EXCLUSIVE.has(slot) ? null : player.teamId,
+  );
+  return worker != null && worker.id !== player.id;
 }
 
 /** Every purchasable variant at a station (for UI catalog). */

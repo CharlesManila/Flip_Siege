@@ -12,10 +12,12 @@ import {
   BENCH_MAX_PER_ARMORY,
   PERMANENT_COSTS,
   PERMANENT_UNLOCK_ROUND,
+  armoryOccupationKey,
   armoryPickOrder,
   blueDefenseTierCost,
   canAfford,
   fourSlotBuffKey,
+  fourSlotChoicePresentation,
   isSlotOccupiedForPlayer,
   legalFourSlotChoices,
   payStash,
@@ -60,23 +62,53 @@ export function humanArmoryDraftTurn(game) {
 
 function clearWorkerFromBoard(game, player) {
   const d = game.armoryDraft;
-  if (player.workerSlot && d.occupied[player.workerSlot] === player.id) {
-    delete d.occupied[player.workerSlot];
+  if (!d || !player.workerSlot) {
+    player.lastWorkerSlot = player.workerSlot;
+    player.workerSlot = null;
+    return;
   }
+  const key = armoryOccupationKey(player.workerSlot, player.teamId);
+  if (d.occupied[key] === player.id) delete d.occupied[key];
   player.lastWorkerSlot = player.workerSlot;
   player.workerSlot = null;
 }
 
 function placeWorker(game, player, slot) {
   const d = game.armoryDraft;
-  if (player.workerSlot && d.occupied[player.workerSlot] === player.id) {
-    delete d.occupied[player.workerSlot];
-  }
-  player.lastWorkerSlot = player.workerSlot;
+  clearWorkerFromBoard(game, player);
   player.workerSlot = slot;
-  if (ARMORY_GLOBAL_EXCLUSIVE.has(slot)) {
-    d.occupied[slot] = player.id;
+  d.occupied[armoryOccupationKey(slot, player.teamId)] = player.id;
+}
+
+function clearAllWorkers(game) {
+  for (const p of game.players) {
+    p.workerSlot = null;
+    p.lastWorkerSlot = null;
   }
+}
+
+function revertFailedPlacement(game, player, previousSlot) {
+  clearWorkerFromBoard(game, player);
+  if (previousSlot) {
+    player.workerSlot = previousSlot;
+    game.armoryDraft.occupied[armoryOccupationKey(previousSlot, player.teamId)] = player.id;
+  }
+}
+
+/** Cheapest legal station buy (for permanent vs pick budgeting). */
+function cheapestLegalPickCost(game, teamId) {
+  const team = game.teams[teamId];
+  const opts = { redBenchUsed: (game.armoryDraft?.teamBenchBuys?.[teamId] ?? 0) >= 1 };
+  let best = null;
+  for (const slot of ARMORY_SLOTS) {
+    for (const choice of legalFourSlotChoices(game, team, slot, opts)) {
+      const { cost } = fourSlotChoicePresentation(game, team, slot, choice);
+      if (!cost || !canAfford(team, cost)) continue;
+      const sum = Object.values(cost).reduce((a, b) => a + b, 0);
+      if (best == null || sum < best) best = sum;
+    }
+  }
+  return best;
 }
 
 export function benchCardById(team, cardId) {
@@ -129,7 +161,8 @@ function tryPermanentDuringDraft(game, teamId, rng) {
   const style = game.armoryStyles[teamId];
   const threshold = style === "saver" ? 22 : 18;
   const resSum = Object.values(resourceTotals(team)).reduce((a, b) => a + b, 0);
-  if (resSum < threshold) return false;
+  const minPick = cheapestLegalPickCost(game, teamId) ?? 5;
+  if (resSum < threshold + minPick) return false;
   if (style === "saver" && rng() > 0.55) return false;
   if (style !== "saver" && rng() > 0.35) return false;
   const choice = pickPermanentChoice(team, opts, rng);
@@ -191,7 +224,7 @@ function aiPickWorker(game, pid) {
     }
   }
 
-  if (!best || bestScore < 8) {
+  if (!best || bestScore < 5) {
     clearWorkerFromBoard(game, player);
     return;
   }
@@ -200,9 +233,7 @@ function aiPickWorker(game, pid) {
   placeWorker(game, player, best.slot);
   const ok = applyFourSlotPurchase(game, player.teamId, best.slot, best.choice, rng);
   if (!ok) {
-    player.workerSlot = old;
-    if (old && ARMORY_GLOBAL_EXCLUSIVE.has(old)) d.occupied[old] = pid;
-    clearWorkerFromBoard(game, player);
+    revertFailedPlacement(game, player, old);
     return;
   }
   const label = formatPickLabel(best.slot, best.choice);
@@ -224,6 +255,7 @@ export function advanceArmoryDraft(game, singleStep = false) {
 
   if (d.pickIndex >= d.pickOrder.length) {
     game.log.push("Armory draft complete.");
+    clearAllWorkers(game);
     game.armoryDraft = null;
     game.subphase = null;
     game.armoryOnComplete?.(game);
@@ -265,7 +297,7 @@ export function pickArmoryWorker(game, slot, choice) {
   placeWorker(game, player, slot);
   const ok = applyFourSlotPurchase(game, player.teamId, slot, choice, game.rng);
   if (!ok) {
-    player.workerSlot = old;
+    revertFailedPlacement(game, player, old);
     return { ok: false, msg: "Cannot afford or illegal." };
   }
   const label = formatPickLabel(slot, choice);

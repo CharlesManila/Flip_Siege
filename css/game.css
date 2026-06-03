@@ -781,6 +781,23 @@ body {
 .calamity-result {
   font-size: 0.85rem;
   margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+.calamity-vs {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--muted, #888);
+  margin-top: 0.2rem;
+  font-weight: 400;
+}
+
+.calamity-reserve-depths,
+.calamity-reserve-note {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted, #888);
+  margin-bottom: 0.25rem;
 }
 
 .calamity-defense-cards {
