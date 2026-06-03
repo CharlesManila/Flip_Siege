@@ -344,10 +344,10 @@ export const ROUND_LABELS = {
 };
 
 export const ROUND_DESCRIPTIONS = {
-  war_drums: "+2 Assault on every siege trick you play (+ tier round 5+).",
-  boiling_oil: "+2 Block on every defense trick and calamity (+ tier).",
-  siege_breaker: "+3 Assault every siege trick; +9 on your first siege (+ tier).",
-  iron_curtain: "+3 Block every defense/calamity; +9 on calamity (+ tier).",
+  war_drums: "5 Siege Charges: spend one per siege trick for +3 Assault (+ tier).",
+  boiling_oil: "5 Wall Charges: spend on defense tricks or calamity for +3 Block (+ tier).",
+  siege_breaker: "3 Siege Charges (+5 each); +9 finisher on first siege trick (+ tier).",
+  iron_curtain: "3 Wall Charges (+5 each); +9 finisher on calamity (+ tier).",
   march_tax: "+1 resource on each off-color your team plays.",
   sally_gate: "On your first lead, led color may differ from your lead monster.",
 };

@@ -833,7 +833,7 @@ function renderArmory(game, hooks) {
 
   const { section: roundSection, grid: roundGrid } = addSection(
     "Round buffs — next round only (blue/yellow resources)",
-    "Active the whole upcoming round (e.g. War Drums on every siege trick). Cleared after that round.",
+    "Active next round: spend Siege/Wall Charges on tricks you care about (checkbox on your turn). Unused charges are lost.",
   );
   const lockedRound = [];
   for (const [k, cost] of Object.entries(ROUND_COSTS)) {

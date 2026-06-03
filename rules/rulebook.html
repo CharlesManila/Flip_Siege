@@ -359,7 +359,7 @@
       <li><strong>Next round</strong> — Swap which team sieges <strong>trick 1</strong> (if Red sieged first in round 1, Blue sieges first in round 2).</li>
       <li><strong>Calamity</strong> (round <strong>3</strong> and every round <strong>5+</strong>) — Last trick is a <strong>deck siege</strong>; both teams defend (§14). No trophies.</li>
       <li><strong>Round end</strong> — Any player has <strong>exactly 1 card</strong> after a trick, <strong>or</strong> max tricks were played.</li>
-      <li><strong>Armory</strong> — Each team makes <strong>2 purchases</strong> (§12). Played cards become <strong>resting</strong> next deal (§6.2).</li>
+      <li><strong>Armory</strong> — <strong>Worker draft</strong>: four picks in trick-1 order (§12). Played cards become <strong>resting</strong> next deal (§6.2).</li>
     </ol>
     <div class="callout">
       <strong>Example (round 1, 7 dealt / 6 tricks):</strong> After 5 tricks everyone has 2 cards; after trick 6 everyone has 1 card → round ends (cap was 6).
@@ -446,7 +446,7 @@
     <ul>
       <li><strong>Off-color play:</strong> gain <strong>⌊rank / 2⌋</strong> resources in that card's color.</li>
       <li><strong>Trophy reward:</strong> gain <strong>⌊monster rank / 2⌋</strong> resources in the trophy card's color.</li>
-      <li><strong>Global cap:</strong> each team can hold at most <strong>28 total</strong> resources across all colors.</li>
+      <li><strong>Global cap:</strong> each team can hold at most <strong>24 total</strong> resources across all colors.</li>
       <li><strong>Overflow:</strong> income beyond the cap is lost.</li>
       <li><strong>Spend:</strong> Armory costs still pay by color (green/blue/red/yellow pools).</li>
     </ul>
@@ -454,9 +454,9 @@
     <table>
       <thead><tr><th>Tier</th><th>Pay with</th><th>Examples</th></tr></thead>
       <tbody>
-        <tr><td>Visit (instant)</td><td><strong>Green</strong> / <strong>Red</strong></td><td>Repair 3G · Red depth 3R / 7R / 11R</td></tr>
-        <tr><td>Round (next round)</td><td><strong>Blue</strong> / <strong>Yellow</strong></td><td>Combat kits — spend charges per trick (§12)</td></tr>
-        <tr><td>Finishers</td><td><strong>Blue</strong> / <strong>Yellow</strong> (round 5+)</td><td>Siege Breaker 18Y · Iron Curtain 18B</td></tr>
+        <tr><td>Visit (instant)</td><td><strong>Green</strong> / <strong>Red</strong></td><td>Patch 5G / Field 9G / Bastion 12G · Red depth 3R / 7R / 11R</td></tr>
+        <tr><td>Round (next round)</td><td><strong>Blue</strong> / <strong>Yellow</strong></td><td>Combat kits — Siege/Wall Charges per trick (§12)</td></tr>
+        <tr><td>Finishers</td><td><strong>Yellow</strong> / <strong>Blue</strong> (round 5+)</td><td>Siege Breaker 13Y · Iron Curtain 13B (included in kits)</td></tr>
         <tr><td>Permanent (once)</td><td><strong>All four colors</strong></td><td>See §13 (unlock round 4 Armory)</td></tr>
       </tbody>
     </table>
@@ -511,7 +511,7 @@
       </tbody>
     </table>
     <p><strong>Depth tradeoff:</strong> Cooling low cards improves your next deal quality but lowers reserve depth (weaker calamity prep block).</p>
-    <p>Clear used round buffs at the start of the round after they apply.</p>
+    <p><strong>Charges:</strong> On your trick (or calamity defense), you may spend one charge for the kit bonus. Uncheck the spend box to hold charges. <strong>Unused charges are lost</strong> when the round ends.</p>
 
     <!-- ========== PERMANENTS ========== -->
     <h2 id="permanents">13. Permanents &amp; elites</h2>
@@ -531,15 +531,15 @@
     <ol>
       <li>Start with the <strong>face rank</strong> (monster rank on siege, tower rank on defense).</li>
       <li>Add <strong>combat tier</strong> (+0 rounds 1–4, +5 round 5, +10 round 6, +11 round 7…).</li>
-      <li>On your team’s <strong>first siege trick</strong> of the round (siege only): add active <strong>War Drums</strong> and/or <strong>Siege Breaker</strong> (full scaled values) to each elite’s base <em>before</em> doubling.</li>
-      <li>On your team’s <strong>first defense trick</strong> of the round: same for <strong>Boiling Oil</strong> / <strong>Iron Curtain</strong> on elite tower ranks.</li>
+      <li>On your team’s <strong>first siege trick</strong> of the round (siege only): add <strong>Siege Breaker finisher</strong> (+9 + tier) to each elite’s base <em>before</em> doubling if active.</li>
       <li><strong>Double</strong> that total. Early-round combat trim still applies after doubling.</li>
+      <li><strong>Siege/Wall Charges</strong> are spent at <strong>trick level</strong> (not baked into elite math).</li>
     </ol>
-    <p>If a Sigil elite contributed Assault (or Block) on that trick, those round buffs are <strong>not</strong> added again at trick level — avoids double-counting.</p>
-    <p>You cannot combine Sigil with Warlord’s Crest / Color Mastery (one Permanent per team). Pair Sigil with <strong>round buys</strong> (Drums, Breaker) for late-game spikes.</p>
+    <p>If a Sigil elite contributed Assault on that trick, the Siege Breaker <strong>finisher</strong> is <strong>not</strong> added again at trick level — avoids double-counting.</p>
+    <p>You cannot combine Sigil with Warlord’s Crest / Color Mastery (one Permanent per team). Pair Sigil with <strong>siege kits</strong> (charges + finisher) for late-game spikes.</p>
     <h3>Elite example (Royal Sigil green, round 6)</h3>
-    <p>Your team has <strong>War Drums</strong> and <strong>Siege Breaker</strong>. <strong>First siege trick</strong>, lead green. You play elite <strong>Goblin 2</strong> (partner plays Goblin 10):</p>
-    <p>Elite base = 2 + tier 10 + Drums 12 + Breaker 19 = <strong>43</strong> → <strong>86 Assault</strong> from that card (before trim). Partner adds 10; trick-level Drums/Breaker are <strong>not</strong> added again because the elite absorbed them.</p>
+    <p>Your team has <strong>Siege Breaker</strong>. <strong>First siege trick</strong>, lead green. You play elite <strong>Goblin 2</strong> (partner plays Goblin 10):</p>
+    <p>Elite base = 2 + tier 10 + finisher 19 = <strong>31</strong> → <strong>62 Assault</strong> from that card (before trim). Partner adds 10; you may still <strong>spend a Siege Charge</strong> at trick level for +15 more.</p>
     <p>Elites do <strong>not</strong> auto-win tricks.</p>
 
     <!-- ========== CALAMITY ========== -->
@@ -564,7 +564,7 @@
     <ol>
       <li>Start from <strong>prep block</strong> (reserve wall + depth bonus).</li>
       <li>Add each defender's <strong>led-color tower block</strong> (off-color = 0 block).</li>
-      <li>Add defense round buffs if active (Boiling Oil / Iron Curtain — includes calamity).</li>
+      <li>Add optional <strong>Wall Charge</strong> spends and <strong>Iron Curtain calamity finisher</strong> if active.</li>
       <li><strong>Total block</strong> = prep + cards + buffs.</li>
       <li><strong>Damage</strong> = Assault + underprep − total block (minimum 0).</li>
     </ol>
@@ -589,7 +589,7 @@
     <h2 id="faq">16. FAQ &amp; edge cases</h2>
     <dl class="faq">
       <dt>Can I buy Repair and a Permanent in the same Armory?</dt>
-      <dd>Yes, if you have 2 purchases. Permanent uses one.</dd>
+      <dd>Yes, on your worker-draft pick (round 4+). One Permanent per team per game.</dd>
       <dt>Can I buy multiple Red depth tradeoffs in one visit?</dt>
       <dd>No. Max one Red purchase per team per Armory visit.</dd>
       <dt>What if no rank-1/2 cards match in reserve on Red?</dt>
@@ -603,7 +603,7 @@
       <dt>Do off-color cards in a trick count for Assault/Block?</dt>
       <dd>No. Only led-color ranks count. Off-color gives resources only.</dd>
       <dt>How much resource do I get from off-color or trophies?</dt>
-      <dd><strong>⌊rank/2⌋</strong> (1→0, 10→5). Team total is capped at <strong>28</strong>.</dd>
+      <dd><strong>⌊rank/2⌋</strong> (1→0, 10→5). Team total is capped at <strong>24</strong>.</dd>
       <dt>Is there a hand size 12?</dt>
       <dd>No. Cap is 11 from round 5 onward.</dd>
       <dt>Legacy Gold / Stash-card rules?</dt>
